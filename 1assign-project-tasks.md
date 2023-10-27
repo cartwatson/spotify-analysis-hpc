@@ -34,10 +34,8 @@ We chose project two, The Genre Reveal Party.
 ## Division of work
 
 - section 1 - setup
-  - readme
-  - serial implementation
-  - validation function
-  - visualization
+  - this section will be split based on estimated time
+    - one person may have more small tasks
 - section 2 - parallel implementation
   - each of us will take two implementations
 - section 3 - scaling study experiments
