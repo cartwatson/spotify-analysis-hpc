@@ -1,8 +1,4 @@
-# Project Tasks Assignment
-
-## Which project did you choose? 
-
-We chose project two, The Genre Reveal Party.  
+# The Genre Reveal Party.  
 
 ## Tasks
 
