@@ -1,8 +1,24 @@
-# spotify-analysis-hpc
+# Spotify Analysis, Parallel Implementation Comparison
 
 ## Overview
 
-Implement a parallel K-mean clustering algorithm to cluster 1.2M songs using metrics provided by Spotify. The program has to work with different numbers of K, you can choose K for your experiments.  (Links to an external site.
+This project aims to implement a parallel K-Means clustering algorithm to categorize a dataset of 1.2 million songs from Spotify using various metrics provided. The algorithm is designed to work flexibly with different numbers of clusters (K), allowing users to experiment and visualize the clustering behavior based on their selected value of K.
+
+## Requirements
+
+- C++11 or greater
+- Python >3.10.xx
+- Python Libraries:
+  - matplotlib
+  - pandas
+  - seaborn
+
+## Usage
+
+1. Ensure all requirements are installed
+   - Run `pip install -r src/python/requirements.txt` to install necessary python libraries
+2. Run `scripts/build.sh` to build your desired implementation
+3. Run `src/python/visualization.py` to visualize results of your implementation
 
 ## Contributors
 
