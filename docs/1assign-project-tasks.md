@@ -20,7 +20,7 @@
       - instead look at different block/tile sizes
    2. distributed mem CPU vs distributed mem GPU
 
-## Some challenges we forsee
+## Some challenges we foresee
 
 - the setup section needs to be completed in order
   - we can't let ourselves get roadblocked for any significant amount of time 
