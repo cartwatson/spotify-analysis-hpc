@@ -42,3 +42,6 @@
 # Python
 .venv
 venv
+
+# vscode
+.vscode
