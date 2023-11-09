@@ -4,7 +4,7 @@ from vispy import app, scene, color
 from pathlib import Path
 import sys
 
-filepath = Path(__file__).parent / 'output.csv' 
+filepath = Path(__file__).parent / '../data/output.csv' 
 df = pd.read_csv(filepath)
 
 danceability = df['danceability'].values
