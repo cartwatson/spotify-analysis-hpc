@@ -1,8 +1,11 @@
 import pandas as pd
 import numpy as np
 from vispy import app, scene, color
+from pathlib import Path
 
-df = pd.read_csv('output.csv')
+fn = 'output.csv'
+filepath = Path(__file__).parent.parent / fn
+df = pd.read_csv(filepath)
 
 danceability = df['danceability'].values
 acousticness = df['acousticness'].values
