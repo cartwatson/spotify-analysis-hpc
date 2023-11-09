@@ -139,16 +139,19 @@ int main(int argc, char** argv) {
     int numLines = -1;
     if (argc > 1)
         numLines = std::stoi(argv[1]);
-    auto start = std::chrono::high_resolution_clock::now(); // Record start time
+    auto start = std::chrono::high_resolution_clock::now();
     std::vector<Instance> insts = readCSV(numLines);
-    auto end = std::chrono::high_resolution_clock::now(); // Record end time
+    auto endParse = std::chrono::high_resolution_clock::now();
 
-    std::chrono::duration<double> duration = end - start; // Calculate duration in seconds
+    std::chrono::duration<double> duration = endParse - start;
     std::cout << "Read " << insts.size() << " instances in " << duration.count() << " seconds" << std::endl;
 
     // Run k-means with 100 iterations and for 5 clusters
     std::cout << "Running k-means..." << std::endl;
     kMeans(&insts, 100, 5);
+    auto endkMeans = std::chrono::high_resolution_clock::now();
+    duration = endkMeans - endParse;
+    std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
 
     return 0;
 }

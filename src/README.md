@@ -3,9 +3,14 @@
 
 ## Execute with:
 `./serial [numLines]`
-- numLines is the number of lines to read from `tracks_features.csv` (useful for quick debugging)
+- `numLines` is the number of lines to read from `tracks_features.csv` (useful for quick debugging)
 Keep numLines empty to read all lines 
+
+## Set up virtual environment and install libraries with:
+`./py_install.sh`
+- Activate virtual environment with `source venv/bin/activate` or `source venv/Scripts/activate` (Windows)
+- Deactivate virtual environment with `deactivate`
 
 ## Run visualization with:
 `python python/visualize.py`
-- **Must install the libraries in `python/requirements` installed first**
+- **Must be in virtual environment with libraries installed**
