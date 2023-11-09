@@ -15,6 +15,8 @@ This project aims to implement a parallel K-Means clustering algorithm to catego
 
 ## Usage
 
+*All files should be run from the root directory (Non script files may be run from `src`)*
+
 1. Run `scripts/build.sh` to build your desired implementation
 2. Run `src/python/visualize.py` to visualize results of your implementation
 
