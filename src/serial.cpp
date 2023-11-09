@@ -38,7 +38,7 @@ struct Instance {
 std::vector<Instance> readCSV(int numLines) {
     std::vector<Instance> insts;
 
-    csv::CSVReader reader("data/tracks_features.csv"); // Read in the CSV file
+    csv::CSVReader reader("src/data/tracks_features.csv"); // Read in the CSV file
     numLines = numLines > -1 ? numLines : __INT_MAX__; // Only read in the first numLines lines
     for (csv::CSVRow& row: reader)
     {
@@ -126,7 +126,7 @@ void kMeans(std::vector<Instance>* instances, int epochs, int k) {
 
     // Write to csv
     std::ofstream myfile;
-    myfile.open("data/output.csv");
+    myfile.open("src/data/output.csv");
     myfile << "danceability,acousticness,liveness,cluster" << std::endl;
 
     for (std::vector<Instance>::iterator it = instances->begin(); it != instances->end(); ++it)
