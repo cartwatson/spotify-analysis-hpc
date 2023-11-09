@@ -7,18 +7,16 @@ This project aims to implement a parallel K-Means clustering algorithm to catego
 ## Requirements
 
 - C++11 or greater
-- Python >3.10.xx
+- Python >3.10
 - Python Libraries:
-  - matplotlib
+  - PyQt5
   - pandas
-  - seaborn
+  - vispy
 
 ## Usage
 
-1. Ensure all requirements are installed
-   - Run `pip install -r src/python/requirements.txt` to install necessary python libraries
-2. Run `scripts/build.sh` to build your desired implementation
-3. Run `src/python/visualization.py` to visualize results of your implementation
+1. Run `scripts/build.sh` to build your desired implementation
+2. Run `src/python/visualize.py` to visualize results of your implementation
 
 ## Contributors
 
@@ -26,7 +24,7 @@ This project aims to implement a parallel K-Means clustering algorithm to catego
 |---|---|---|
 | Carter Watson  | [Github](https://www.github.com/cartwatson) | [LinkedIn](https://www.linkedin.com/in/cartwatson) |  
 | Caden Maxwell  | [Github](https://github.com/caden-maxwell)  | [LinkedIn](https://www.linkedin.com/in/cadenmaxwell/) |
-| Jaxson Madison | Github | LinkedIn |
+| Jaxson Madison | [Github](https://github.com/JaxsonM) | LinkedIn |
 
 ## References 
 
