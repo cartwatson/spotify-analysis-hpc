@@ -9,9 +9,7 @@ This project aims to implement a parallel K-Means clustering algorithm to catego
 - C++11 or greater
 - Python >3.10
 - Python Libraries:
-  - PyQt5
-  - pandas
-  - vispy
+  - [`scripts/requirements.txt`](scripts/requirements.txt)
 
 ## Usage
 
