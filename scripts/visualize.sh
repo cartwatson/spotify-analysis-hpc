@@ -17,7 +17,7 @@ if [ ! -d .venv ]; then
         fi
         echo "Updating pip and installing requirements..."
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r scripts/requirements.txt
     else
         echo "Exiting."
         exit 1
@@ -30,4 +30,4 @@ if [ -d .venv/Scripts ]; then
 else
     source .venv/bin/activate # Unix
 fi
-python visualize.py
+python src/python/visualize.py
