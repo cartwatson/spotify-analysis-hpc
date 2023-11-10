@@ -25,9 +25,12 @@ if [ ! -d .venv ]; then
 fi
 
 echo "Running python visualization..."
-if [ -d .venv/Scripts ]; then
-    source .venv/Scripts/activate # Windows
-else
-    source .venv/bin/activate # Unix
-fi
-python visualize.py
+if [[ -n "$WINDIR" ]]; then # Windows
+    source .venv/Scripts/activate
+    python ./src/python/visualize.py
+    deactivate
+else # UNIX
+    source .venv/bin/activate
+    python3 ./src/python/visualize.py
+    deactivate
+fi 
