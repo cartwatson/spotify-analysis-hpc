@@ -22,4 +22,5 @@
 
 ## Validate
 
-1. coming soon
+1. run `./scripts/validate.sh`from root directory
+2. enjoy
