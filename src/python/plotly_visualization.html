@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>K-means Clustering Visualization with Plotly</title>
+    <!-- Include Plotly JavaScript library for creating the visualization -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- Include PapaParse JavaScript library for parsing CSV data -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+</head>
+<body>
+
+    <!-- Container for the Plotly plot -->
+    <div id="plot"></div>
+
+    <script>
+        // Function to process CSV data and create the plot
+        function processData(allRows) {
+            // Console log for debugging: prints the CSV data to browser's console
+            console.log(allRows);
+
+            // Arrays to store individual column data
+            var x = [], y = [], z = [], cluster = [];
+
+            // Loop through each row of the CSV data
+            for (var i = 0; i < allRows.length; i++) {
+                var row = allRows[i];
+                // Push each column's value into the respective array
+                x.push(row['danceability']);
+                y.push(row['acousticness']);
+                z.push(row['liveness']);
+                cluster.push(row['cluster']);
+            }
+
+            // Data structure for Plotly plot
+            var data = [{
+                type: 'scatter3d', // 3D scatter plot
+                mode: 'markers',   // Use markers to represent data points
+                marker: {
+                    size: 6, // Size of the markers
+                    color: cluster, // Color the markers based on the cluster
+                    colorscale: 'Viridis', // Color scale for the markers
+                    opacity: 0.8 // Marker opacity
+                },
+                x: x, // X-axis data
+                y: y, // Y-axis data
+                z: z  // Z-axis data
+            }];
+
+            // Layout configuration for the plot
+            var layout = {
+                title: '3D Scatter Plot for K-means Clustering', // Plot title
+                scene: { // Axes configuration
+                    xaxis: {title: 'Danceability'}, // X-axis title
+                    yaxis: {title: 'Acousticness'}, // Y-axis title
+                    zaxis: {title: 'Liveness'}     // Z-axis title
+                },
+                margin: { // Plot margins
+                    l: 0,
+                    r: 0,
+                    b: 0,
+                    t: 0
+                }
+            };
+
+            // Render the plot in the 'plot' div
+            Plotly.newPlot('plot', data, layout);
+        }
+
+        // Fetch the CSV data using PapaParse
+        Papa.parse("../data/output.csv", {
+            download: true, // Enable downloading of the file
+            header: true,   // Treat the first row of CSV as headers
+            complete: function(results) {
+                processData(results.data); // Process the CSV data once download is complete
+            }
+        });
+
+    </script>
+</body>
+</html>

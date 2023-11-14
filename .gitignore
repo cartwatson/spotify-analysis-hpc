@@ -45,3 +45,6 @@ venv
 
 # vscode
 .vscode
+
+# MacOs
+.DS_Store
