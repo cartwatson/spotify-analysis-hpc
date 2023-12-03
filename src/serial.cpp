@@ -97,9 +97,9 @@ int main(int argc, char** argv)
 
     auto start = std::chrono::high_resolution_clock::now();
     
-    std::vector<std::vector<double>> data = parseCSV(maxLines);
+    std::vector<double*> data = parseCSV(maxLines);
     std::vector<Instance> instances;
-    for (std::vector<double> row : data)
+    for (double* row : data)
         instances.push_back(Instance(row));
 
     auto endParse = std::chrono::high_resolution_clock::now();

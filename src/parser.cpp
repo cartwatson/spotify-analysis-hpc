@@ -3,7 +3,7 @@
 #include <sstream>
 #include <vector>
 
-std::vector<std::vector<double>> parseCSV(int maxLines = -1)
+std::vector<double*> parseCSV(int maxLines = -1)
 {
     std::string fn = "src/data/tracks_features.csv";
     std::ifstream file(fn);
@@ -11,9 +11,7 @@ std::vector<std::vector<double>> parseCSV(int maxLines = -1)
     int lineCount = 0;
     std::getline(file, line); // Skip header
 
-    std::vector<std::vector<double>> data;
-    std::vector<double> features;
-    features.reserve(15);
+    std::vector<double*> data;
     std::stringstream ss;
     std::string cell;
     while (std::getline(file, line) && (maxLines == -1 || lineCount < maxLines))
@@ -26,12 +24,11 @@ std::vector<std::vector<double>> parseCSV(int maxLines = -1)
         while (std::getline(ss, cell, ','))
             row.push_back(cell);
 
-        // Get last 15 columns
+        double* features = new double[15];
         for (size_t i = row.size() - 15; i < row.size(); i++)
-            features.push_back(std::stod(row[i]));
+            features[i - (row.size() - 15)] = std::stod(row[i]);
 
         data.push_back(features);
-        features.clear();
         lineCount++;
         ss.clear();
     }

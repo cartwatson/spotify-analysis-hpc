@@ -18,7 +18,7 @@ struct Instance {
     int cluster;
     double minDist;
 
-    Instance(std::vector<double> row):
+    Instance(double* row):
         danceability(row[0]),
         energy(row[1]),
         key(row[2]),
