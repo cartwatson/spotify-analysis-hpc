@@ -14,7 +14,7 @@
  * @param epochs - number of k means iterations
  * @param k - the number of initial centroids
  */
-void kMeansSerial(std::vector<Instance>& instances, int epochs, int k) {
+void kMeansParallel(std::vector<Instance>& instances, int epochs, int k) {
     int n = instances.size();
 
     // Randomly initialise centroids
@@ -38,6 +38,7 @@ void kMeansSerial(std::vector<Instance>& instances, int epochs, int k) {
         // For each centroid, compute distance from centroid to each point
         // and update point's cluster if necessary
         for (Instance& c : centroids)
+            # pragma omp parallel for
             for (Instance& inst : instances)
             {
                 double dist = c.distance(inst);
@@ -48,18 +49,21 @@ void kMeansSerial(std::vector<Instance>& instances, int epochs, int k) {
                 }
             }
 
+
         // Create vectors to keep track of data needed to compute means
-        std::vector<int> nInsts;
-        std::vector<double> sumDance, sumAcoustic, sumLive;
+        int nInsts[k];
+        double sumDance[k], sumAcoustic[k], sumLive[k];
         for (int j = 0; j < k; ++j)
         {
-            nInsts.push_back(0);
-            sumDance.push_back(0.0);
-            sumAcoustic.push_back(0.0);
-            sumLive.push_back(0.0);
+            nInsts[j] = 0;
+            sumDance[j] = 0.0;
+            sumAcoustic[j] = 0.0;
+            sumLive[j] = 0.0;
         }
 
         // Iterate over points to append data to centroids
+        // Use array sum reduction: https://dvalters.github.io/optimisation/code/2016/11/06/OpenMP-array_reduction.html
+        # pragma omp parallel for reduction(+:nInsts[:k], sumDance[:k], sumAcoustic[:k], sumLive[:k])
         for (Instance& inst : instances)
         {
             nInsts[inst.cluster] += 1;
@@ -108,7 +112,7 @@ int main(int argc, char** argv)
     std::cout << "Parsed data in " << duration.count() << " seconds" << std::endl;
     
     std::cout << "Running k-means..." << std::endl;
-    kMeansSerial(instances, 100, 4);
+    kMeansParallel(instances, 100, 4);
     auto endkMeans = std::chrono::high_resolution_clock::now();
     duration = endkMeans - endParse;
     std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
