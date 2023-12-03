@@ -2,8 +2,9 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <random>
 #include <vector>
+#include <random>
+#include <omp.h>
 
 #include "parser.cpp"
 #include "instance.cpp"
@@ -20,12 +21,7 @@ void kMeansSerial(std::vector<Instance>* instances, int epochs, int k) {
     // Randomly initialise centroids
     // The index of the centroid within the centroids vector
     // represents the cluster label.
-    #ifdef TESTING
     std::mt19937 rng(123);
-    #else
-    std::mt19937 rng(static_cast<unsigned>(std::time(0)));
-    #endif
-
     std::vector<Instance> centroids;
     std::uniform_int_distribution<int> uni(0, n - 1);
     for (int i = 0; i < k; ++i)
@@ -39,6 +35,7 @@ void kMeansSerial(std::vector<Instance>* instances, int epochs, int k) {
         {
             int clusterId = c - begin(centroids);
 
+            #pragma omp parallel for
             for (std::vector<Instance>::iterator it = instances->begin(); it != instances->end(); ++it)
             {
                 Instance inst = *it;

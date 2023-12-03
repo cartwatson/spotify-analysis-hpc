@@ -3,7 +3,11 @@
 # IMPLEMENTATIONS
 serial_implementation() {
     echo "Compiling serial program..."
-    g++ -g -Wall -o serial src/serial.cpp
+    if [ -n "$TESTING" ]; then
+        g++ -g -Wall -DTESTING -o serial src/serial.cpp
+    else
+        g++ -g -Wall -o serial src/serial.cpp
+    fi
     if [ $? -ne 0 ]; then
         echo "Error: Compilation failed."
         exit 1
@@ -17,6 +21,28 @@ serial_implementation() {
     echo "Program executed successfully"
     echo "Cleaning up..."
     rm serial
+}
+
+openmp_implementation() {
+    echo "Compiling openmp program..."
+    if [ -n "$TESTING" ]; then
+        g++ -g -Wall -fopenmp -DTESTING -o omp src/omp.cpp
+    else
+        g++ -g -Wall -fopenmp -o omp src/omp.cpp
+    fi
+    if [ $? -ne 0 ]; then
+        echo "Error: Compilation failed."
+        exit 1
+    fi
+
+    echo "Running openmp program..."
+    read -p "Enter command line arguments (enter for none): " -a args
+    echo "Program Output:"
+    ./omp ${args[@]}
+
+    echo "Program executed successfully"
+    echo "Cleaning up..."
+    rm omp
 }
 
 
@@ -34,8 +60,7 @@ case $choice in
         serial_implementation
         ;;
     2)
-        echo "Not yet implemented"
-        exit 1
+        openmp_implementation
         ;;
     *)
         echo "Invalid choice"
