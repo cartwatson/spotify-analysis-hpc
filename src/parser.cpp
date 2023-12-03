@@ -31,7 +31,6 @@ std::vector<double*> parseCSV(int maxLines = -1)
         data.push_back(features);
         lineCount++;
         ss.clear();
-        delete[] features;
     }
     file.close();
     std::cout << "Parsed " << lineCount << " lines" << std::endl;
