@@ -36,3 +36,15 @@ std::vector<double*> parseCSV(int maxLines = -1)
     std::cout << "Parsed " << lineCount << " lines" << std::endl;
     return data;
 }
+
+void writeCSV(std::vector<double*>& data, std::string fn, std::string header)
+{
+    std::ofstream myfile;
+    myfile.open(fn);
+    myfile << header << std::endl;
+
+    for (double* feat : data)
+        myfile << feat[0] << "," << feat[1] << "," << feat[2] << "," << feat[3] << std::endl;
+
+    myfile.close();
+}

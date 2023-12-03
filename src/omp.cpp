@@ -5,7 +5,7 @@
 #include <vector>
 #include <random>
 
-#include "parser.cpp"
+#include "util.cpp"
 #include "song.cpp"
 
 /**
@@ -67,9 +67,9 @@ void kMeansParallel(std::vector<Song>& songs, int epochs, int k) {
         for (Song& song : songs)
         {
             nSongs[song.cluster] += 1;
-            sumDance[song.cluster] += song.danceability;
-            sumAcoustic[song.cluster] += song.acousticness;
-            sumLive[song.cluster] += song.liveness;
+            sumDance[song.cluster] += song.feature1;
+            sumAcoustic[song.cluster] += song.feature2;
+            sumLive[song.cluster] += song.feature3;
 
             song.minDist = __DBL_MAX__;  // reset distance
         }
@@ -77,21 +77,11 @@ void kMeansParallel(std::vector<Song>& songs, int epochs, int k) {
         // Compute the new centroids
         for (Song& c : centroids)
         {
-            c.danceability = sumDance[c.cluster] / nSongs[c.cluster];
-            c.acousticness = sumAcoustic[c.cluster] / nSongs[c.cluster];
-            c.liveness = sumLive[c.cluster] / nSongs[c.cluster];
+            c.feature1 = sumDance[c.cluster] / nSongs[c.cluster];
+            c.feature2 = sumAcoustic[c.cluster] / nSongs[c.cluster];
+            c.feature3 = sumLive[c.cluster] / nSongs[c.cluster];
         }
     }
-
-    // Write to csv
-    std::ofstream myfile;
-    myfile.open("src/data/output.csv");
-    myfile << "danceability,acousticness,liveness,cluster" << std::endl;
-
-    for (Song& it : songs)
-        myfile << it.danceability << "," << it.acousticness << "," << it.liveness << "," << it.cluster << std::endl;
-
-    myfile.close();
 }
 
 int main(int argc, char** argv)
@@ -104,18 +94,35 @@ int main(int argc, char** argv)
     
     std::vector<double*> data = parseCSV(maxLines);
     std::vector<Song> songs;
+    std::vector<std::string> featureNames = {"danceability", "acousticness", "liveness"};
     for (double* row : data)
-        songs.push_back(Song(row));
+        songs.push_back(Song(row[0], row[6], row[8]));
 
     auto endParse = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = endParse - start;
     std::cout << "Parsed data in " << duration.count() << " seconds" << std::endl;
     
     std::cout << "Running k-means..." << std::endl;
-    kMeansParallel(songs, 100, 4);
+
+    kMeansParallel(songs, 100, 5);
+
     auto endkMeans = std::chrono::high_resolution_clock::now();
     duration = endkMeans - endParse;
     std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
+
+    std::cout << "Writing output to file..." << std::endl;
+    std::string header = featureNames[0] + "," + featureNames[1] + "," + featureNames[2] + ",cluster";
+    data.clear();
+    for (Song& song : songs)
+    {
+        double* row = new double[4];
+        row[0] = song.feature1;
+        row[1] = song.feature2;
+        row[2] = song.feature3;
+        row[3] = song.cluster;
+        data.push_back(row);
+    }
+    writeCSV(data, "src/data/output.csv", header);
 
     return 0;
 }
