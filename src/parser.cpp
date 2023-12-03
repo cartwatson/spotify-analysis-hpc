@@ -13,29 +13,29 @@ std::vector<std::vector<double>> parseCSV(int maxLines = -1)
 
     std::vector<std::vector<double>> data;
     std::vector<double> features;
+    features.reserve(15);
+    std::stringstream ss;
+    std::string cell;
     while (std::getline(file, line) && (maxLines == -1 || lineCount < maxLines))
     {
+        ss.str(line);
         if (lineCount % 100000 == 0)
             std::cout << "Parsed " << lineCount << " lines" << std::endl;
-        std::stringstream ss(line);
-        std::string cell;
 
         std::vector<std::string> row;
         while (std::getline(ss, cell, ','))
             row.push_back(cell);
 
         // Get last 15 columns
-        std::vector<double> features;
         for (size_t i = row.size() - 15; i < row.size(); i++)
             features.push_back(std::stod(row[i]));
-        features.pop_back(); features.pop_back(); // Get rid of dates
 
         data.push_back(features);
         features.clear();
         lineCount++;
+        ss.clear();
     }
-
+    file.close();
     std::cout << "Parsed " << lineCount << " lines" << std::endl;
-
     return data;
 }
