@@ -29,13 +29,14 @@ void kMeansSerial(std::vector<Instance>* instances, int epochs, int k) {
 
     for (int i = 0; i < epochs; ++i)
     {
+        # pragma omp parallel
         // For each centroid, compute distance from centroid to each point
         // and update point's cluster if necessary
         for (std::vector<Instance>::iterator c = begin(centroids); c != end(centroids); ++c)
         {
             int clusterId = c - begin(centroids);
 
-            #pragma omp parallel for
+            # pragma omp for
             for (std::vector<Instance>::iterator it = instances->begin(); it != instances->end(); ++it)
             {
                 Instance inst = *it;
@@ -52,6 +53,7 @@ void kMeansSerial(std::vector<Instance>* instances, int epochs, int k) {
         // Create vectors to keep track of data needed to compute means
         std::vector<int> nPoints;
         std::vector<double> sumDance, sumAcoustic, sumLive;
+        # pragma omp for
         for (int j = 0; j < k; ++j)
         {
             nPoints.push_back(0);
@@ -61,6 +63,7 @@ void kMeansSerial(std::vector<Instance>* instances, int epochs, int k) {
         }
 
         // Iterate over points to append data to centroids
+        # pragma omp for
         for (std::vector<Instance>::iterator it = instances->begin(); it != instances->end(); ++it)
         {
             int clusterId = it->cluster;
@@ -71,7 +74,9 @@ void kMeansSerial(std::vector<Instance>* instances, int epochs, int k) {
 
             it->minDist = __DBL_MAX__;  // reset distance
         }
+
         // Compute the new centroids
+        # pragma omp for
         for (std::vector<Instance>::iterator c = begin(centroids); c != end(centroids); ++c)
         {
             int clusterId = c - begin(centroids);
