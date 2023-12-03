@@ -2,8 +2,11 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <iomanip>
 
-std::vector<double*> parseCSV(int maxLines = -1)
+int MAX_LINES = 1204025;
+
+std::vector<double*> parseCSV(int maxLines = MAX_LINES)
 {
     std::string fn = "src/data/tracks_features.csv";
     std::ifstream file(fn);
@@ -14,11 +17,20 @@ std::vector<double*> parseCSV(int maxLines = -1)
     std::vector<double*> data;
     std::stringstream ss;
     std::string cell;
-    while (std::getline(file, line) && (maxLines == -1 || lineCount < maxLines))
+    
+    const int progressBarWidth = 50;  // Adjust the width of progress bar
+    int progressBarStep = maxLines / progressBarWidth;
+    
+    std::cout << "Parsing input file..." << std::endl;
+    while (std::getline(file, line) && lineCount < maxLines)
     {
         ss.str(line);
-        if (lineCount % 100000 == 0)
-            std::cout << "Parsed " << lineCount << " lines" << std::endl;
+        if (lineCount % progressBarStep == 0)
+        {
+            std::cout << "[" << std::setw(progressBarWidth * lineCount / maxLines) << std::setfill('=') << '>'
+                      << std::setw(progressBarWidth - progressBarWidth * lineCount / maxLines) << ']' 
+                      << " " << std::setw(4) << (100 * lineCount / maxLines) << "%\r" << std::flush;
+        }
 
         std::vector<std::string> row;
         while (std::getline(ss, cell, ','))
@@ -33,9 +45,11 @@ std::vector<double*> parseCSV(int maxLines = -1)
         ss.clear();
     }
     file.close();
-    std::cout << "Parsed " << lineCount << " lines" << std::endl;
+    std::cout << "[" << std::setw(progressBarWidth) << std::setfill('=') << '>'
+              << "] " << "100%" << std::endl;
     return data;
 }
+
 
 void writeCSV(std::vector<double*>& data, std::string fn, std::string header)
 {
