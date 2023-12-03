@@ -4,7 +4,6 @@
 #include <sstream>
 #include <vector>
 #include <random>
-#include <omp.h>
 
 #include "parser.cpp"
 #include "instance.cpp"
@@ -15,8 +14,8 @@
  * @param epochs - number of k means iterations
  * @param k - the number of initial centroids
  */
-void kMeansSerial(std::vector<Instance>* instances, int epochs, int k) {
-    int n = instances->size();
+void kMeansParallel(std::vector<Instance>& instances, int epochs, int k) {
+    int n = instances.size();
 
     // Randomly initialise centroids
     // The index of the centroid within the centroids vector
@@ -29,64 +28,58 @@ void kMeansSerial(std::vector<Instance>* instances, int epochs, int k) {
     std::vector<Instance> centroids;
     std::uniform_int_distribution<int> uni(0, n - 1);
     for (int i = 0; i < k; ++i)
-        centroids.push_back(instances->at(uni(rng)));
+    {
+        centroids.push_back(instances.at(uni(rng)));
+        centroids[i].cluster = i;
+    }
 
     for (int i = 0; i < epochs; ++i)
     {
-        # pragma omp parallel
         // For each centroid, compute distance from centroid to each point
         // and update point's cluster if necessary
-        for (std::vector<Instance>::iterator c = begin(centroids); c != end(centroids); ++c)
-        {
-            int clusterId = c - begin(centroids);
-
-            # pragma omp for
-            for (std::vector<Instance>::iterator it = instances->begin(); it != instances->end(); ++it)
+        for (Instance& c : centroids)
+            # pragma omp parallel for
+            for (Instance& inst : instances)
             {
-                Instance inst = *it;
-                double dist = c->distance(inst);
+                double dist = c.distance(inst);
                 if (dist < inst.minDist)
                 {
                     inst.minDist = dist;
-                    inst.cluster = clusterId;
+                    inst.cluster = c.cluster;
                 }
-                *it = inst;
             }
-        }
+
 
         // Create vectors to keep track of data needed to compute means
-        std::vector<int> nPoints;
-        std::vector<double> sumDance, sumAcoustic, sumLive;
-        # pragma omp for
+        int nInsts[k];
+        double sumDance[k], sumAcoustic[k], sumLive[k];
         for (int j = 0; j < k; ++j)
         {
-            nPoints.push_back(0);
-            sumDance.push_back(0.0);
-            sumAcoustic.push_back(0.0);
-            sumLive.push_back(0.0);
+            nInsts[j] = 0;
+            sumDance[j] = 0.0;
+            sumAcoustic[j] = 0.0;
+            sumLive[j] = 0.0;
         }
 
         // Iterate over points to append data to centroids
-        # pragma omp for
-        for (std::vector<Instance>::iterator it = instances->begin(); it != instances->end(); ++it)
+        // Use array sum reduction: https://dvalters.github.io/optimisation/code/2016/11/06/OpenMP-array_reduction.html
+        # pragma omp parallel for reduction(+:nInsts[:k], sumDance[:k], sumAcoustic[:k], sumLive[:k])
+        for (Instance& inst : instances)
         {
-            int clusterId = it->cluster;
-            nPoints[clusterId] += 1;
-            sumDance[clusterId] += it->danceability;
-            sumAcoustic[clusterId] += it->acousticness;
-            sumLive[clusterId] += it->liveness;
+            nInsts[inst.cluster] += 1;
+            sumDance[inst.cluster] += inst.danceability;
+            sumAcoustic[inst.cluster] += inst.acousticness;
+            sumLive[inst.cluster] += inst.liveness;
 
-            it->minDist = __DBL_MAX__;  // reset distance
+            inst.minDist = __DBL_MAX__;  // reset distance
         }
 
         // Compute the new centroids
-        # pragma omp for
-        for (std::vector<Instance>::iterator c = begin(centroids); c != end(centroids); ++c)
+        for (Instance& c : centroids)
         {
-            int clusterId = c - begin(centroids);
-            c->danceability = sumDance[clusterId] / nPoints[clusterId];
-            c->acousticness = sumAcoustic[clusterId] / nPoints[clusterId];
-            c->liveness = sumLive[clusterId] / nPoints[clusterId];
+            c.danceability = sumDance[c.cluster] / nInsts[c.cluster];
+            c.acousticness = sumAcoustic[c.cluster] / nInsts[c.cluster];
+            c.liveness = sumLive[c.cluster] / nInsts[c.cluster];
         }
     }
 
@@ -95,8 +88,8 @@ void kMeansSerial(std::vector<Instance>* instances, int epochs, int k) {
     myfile.open("src/data/output.csv");
     myfile << "danceability,acousticness,liveness,cluster" << std::endl;
 
-    for (std::vector<Instance>::iterator it = instances->begin(); it != instances->end(); ++it)
-        myfile << it->danceability << "," << it->acousticness << "," << it->liveness << "," << it->cluster << std::endl;
+    for (Instance& it : instances)
+        myfile << it.danceability << "," << it.acousticness << "," << it.liveness << "," << it.cluster << std::endl;
 
     myfile.close();
 }
@@ -119,7 +112,7 @@ int main(int argc, char** argv)
     std::cout << "Parsed data in " << duration.count() << " seconds" << std::endl;
     
     std::cout << "Running k-means..." << std::endl;
-    kMeansSerial(&instances, 100, 4);
+    kMeansParallel(instances, 100, 4);
     auto endkMeans = std::chrono::high_resolution_clock::now();
     duration = endkMeans - endParse;
     std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
