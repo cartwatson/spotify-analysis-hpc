@@ -4,9 +4,9 @@
 serial_implementation() {
     echo "Compiling serial program..."
     if [ -n "$TESTING" ]; then
-        g++ -g -Wall -DTESTING -o serial src/serial.cpp
+        g++ -std=c++11 -g -Wall -DTESTING -o serial src/serial.cpp
     else
-        g++ -g -Wall -o serial src/serial.cpp
+        g++ -std=c++11 -g -Wall -o serial src/serial.cpp
     fi
     if [ $? -ne 0 ]; then
         echo "Error: Compilation failed."
@@ -25,11 +25,33 @@ serial_implementation() {
 
 openmp_implementation() {
     echo "Compiling openmp program..."
-    if [ -n "$TESTING" ]; then
-        g++ -g -Wall -fopenmp -DTESTING -o omp src/omp.cpp
+
+    # Detect OS
+    OS=$(uname -s)
+
+    # Check if OS is macOS (Apple)
+    if [ "$OS" = "Darwin" ]; then
+        echo "Detected macOS. Using clang++ for compilation."
+        # Check if TESTING environment variable is set
+        if [ -n "$TESTING" ]; then
+            echo "Compiling with TESTING flag using clang++."
+            clang++ -std=c++11 -Xpreprocessor -fopenmp -DTESTING -I/opt/homebrew/opt/libomp/include -L/opt/homebrew/opt/libomp/lib -lomp src/omp.cpp -o omp
+        else
+            echo "Compiling without TESTING flag using clang++."
+            clang++ -std=c++11 -Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include -L/opt/homebrew/opt/libomp/lib -lomp src/omp.cpp -o omp
+        fi
     else
-        g++ -g -Wall -fopenmp -o omp src/omp.cpp
+        # Check if TESTING environment variable is set
+        if [ -n "$TESTING" ]; then
+            echo "Compiling with TESTING flag using g++."
+            g++ -g -Wall -fopenmp -DTESTING -o omp src/omp.cpp
+        else
+            echo "Compiling without TESTING flag using g++."
+            g++ -g -Wall -fopenmp -o omp src/omp.cpp
+        fi
     fi
+
+    # Check for compilation success
     if [ $? -ne 0 ]; then
         echo "Error: Compilation failed."
         exit 1
@@ -44,6 +66,7 @@ openmp_implementation() {
     echo "Cleaning up..."
     rm omp
 }
+
 
 mpi_implementation() {
     echo "Compiling mpi program..."
