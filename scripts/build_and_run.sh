@@ -45,6 +45,23 @@ openmp_implementation() {
     rm omp
 }
 
+mpi_implementation() {
+    echo "Compiling mpi program..."
+    mpic++ -std=c++11 -o mpi src/mpi.cpp
+    if [ $? -ne 0 ]; then
+        echo "Error: Compilation failed."
+        exit 1
+    fi
+
+    echo "Running mpi program..."
+    read -p "Enter command line arguments (enter for none): " -a args
+    echo "Program Output:"
+    mpirun -np 4 ./mpi ${args[@]}
+
+    echo "Program executed successfully"
+    echo "Cleaning up..."
+    rm mpi
+}
 
 # MAIN
 echo "Select an implementation to build:"
@@ -61,6 +78,9 @@ case $choice in
         ;;
     2)
         openmp_implementation
+        ;;
+    4)
+        mpi_implementation
         ;;
     *)
         echo "Invalid choice"
