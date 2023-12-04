@@ -161,8 +161,11 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
     int maxLines = 250000;
-    if (argc > 1) {
+    if (argc > 1)
+    {
         maxLines = std::stoi(argv[1]);
+        if (maxLines < 0 || maxLines > MAX_LINES)
+            maxLines = MAX_LINES;
     }
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -173,6 +176,7 @@ int main(int argc, char** argv) {
     std::vector<Song> allSongs;
 
     if (world_rank == 0) {
+        std::cout << "maxLines = " << maxLines << std::endl;
         // Parse CSV and fill allSongs
         std::vector<double*> data = parseCSV(maxLines);
         for (double* row : data) {

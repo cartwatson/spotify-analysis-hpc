@@ -90,7 +90,7 @@ int main(int argc, char** argv)
     if (argc > 1)
     {
         maxLines = std::stoi(argv[1]);
-        if (maxLines < 0)
+        if (maxLines < 0 || maxLines > MAX_LINES)
             maxLines = MAX_LINES;
         std::cout << "maxLines = " << maxLines << std::endl;
     }
