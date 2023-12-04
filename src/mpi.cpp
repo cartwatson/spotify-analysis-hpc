@@ -7,21 +7,21 @@
 #include <random>
 
 #include "util.cpp"
-#include "instance.cpp"
+#include "song.cpp"
 
 MPI_Datatype MPI_Instance;
-std::ostream& operator<<(std::ostream& os, const Instance& inst) {
-    os << "Danceability: " << inst.danceability 
-       << ", Acousticness: " << inst.acousticness 
-       << ", Liveness: " << inst.liveness 
+std::ostream& operator<<(std::ostream& os, const Song& inst) {
+    os << "Danceability: " << inst.feature1 
+       << ", Acousticness: " << inst.feature2 
+       << ", Liveness: " << inst.feature3 
        << ", Cluster: " << inst.cluster;
     return os;
 }
 
-void kMeansDistributed(std::vector<Instance>& instances, int epochs, int k, int world_size, int world_rank) {
+void kMeansDistributed(std::vector<Song>& instances, int epochs, int k, int world_size, int world_rank) {
     int n = instances.size();
-    std::vector<Instance> centroids(k);
-    std::vector<Instance> allCentroids;
+    std::vector<Song> centroids(k);
+    std::vector<Song> allCentroids;
 
     // Validate dataset
     if (instances.empty()) {
@@ -54,11 +54,11 @@ void kMeansDistributed(std::vector<Instance>& instances, int epochs, int k, int 
 
     for (int epoch = 0; epoch < epochs; ++epoch) {        
         // Assign points to the nearest centroid
-        for (Instance& inst : instances) {  // Iterates over each instance in the dataset
+        for (Song& inst : instances) {  // Iterates over each instance in the dataset
             double minDist = __DBL_MAX__;  // Initialize minimum distance to the maximum possible double value
             int closestCluster = -1;  // Initialize the closest cluster index to -1 (no cluster)
 
-            for (Instance& centroid : centroids) {  // Iterates over each centroid
+            for (Song& centroid : centroids) {  // Iterates over each centroid
                 double dist = centroid.distance(inst);  // Calculate the distance from the current centroid to the instance
                 if (dist < minDist) {  // Check if this distance is less than the current minimum distance
                     minDist = dist;  // Update the minimum distance
@@ -71,14 +71,14 @@ void kMeansDistributed(std::vector<Instance>& instances, int epochs, int k, int 
 
 
         // Calculate new centroids locally
-        std::vector<Instance> newCentroids(k);  // Create a vector to store new centroids for each cluster
+        std::vector<Song> newCentroids(k);  // Create a vector to store new centroids for each cluster
         std::vector<int> counts(k, 0);  // Create a vector to count the number of instances in each cluster
 
-        for (Instance& inst : instances) {  // Iterate over each instance
+        for (Song& inst : instances) {  // Iterate over each instance
             //std::cout << "Cluster: " << inst.cluster << std::endl;
-            newCentroids[inst.cluster].danceability += inst.danceability;  // Sum danceability for the cluster
-            newCentroids[inst.cluster].acousticness += inst.acousticness;  // Sum acousticness for the cluster
-            newCentroids[inst.cluster].liveness += inst.liveness;  // Sum liveness for the cluster
+            newCentroids[inst.cluster].feature1 += inst.feature1;  // Sum danceability for the cluster
+            newCentroids[inst.cluster].feature2 += inst.feature2;  // Sum acousticness for the cluster
+            newCentroids[inst.cluster].feature3 += inst.feature3;  // Sum liveness for the cluster
             newCentroids[inst.cluster].cluster = inst.cluster;
             counts[inst.cluster]++;  // Increment the count of instances in this cluster
         }
@@ -92,9 +92,9 @@ void kMeansDistributed(std::vector<Instance>& instances, int epochs, int k, int 
         // std::cout << "Process " << world_rank << " newCentroids before gather:\n";
         // for (int i = 0; i < newCentroids.size(); i++) {
         //         std::cout << "Cluster " << newCentroids[i].cluster << ": "
-        //                 << "Danceability: " << newCentroids[i].danceability
-        //                 << ", Acousticness: " << newCentroids[i].acousticness
-        //                 << ", Liveness: " << newCentroids[i].liveness << "\n";
+        //                 << "Danceability: " << newCentroids[i].feature1
+        //                 << ", Acousticness: " << newCentroids[i].feature2
+        //                 << ", Liveness: " << newCentroids[i].feature3 << "\n";
         // }
 
         MPI_Gather(newCentroids.data(), k, MPI_Instance,
@@ -106,9 +106,9 @@ void kMeansDistributed(std::vector<Instance>& instances, int epochs, int k, int 
         //     //for (const auto& centroid : allCentroids) {
         //     for (int i = 0; i < allCentroids.size(); i++) {
         //         std::cout << "Cluster " << allCentroids[i].cluster << ": "
-        //                 << "Danceability: " << allCentroids[i].danceability
-        //                 << ", Acousticness: " << allCentroids[i].acousticness
-        //                 << ", Liveness: " << allCentroids[i].liveness << "\n";
+        //                 << "Danceability: " << allCentroids[i].feature1
+        //                 << ", Acousticness: " << allCentroids[i].feature2
+        //                 << ", Liveness: " << allCentroids[i].feature3 << "\n";
         //     }
         // }
 
@@ -116,16 +116,16 @@ void kMeansDistributed(std::vector<Instance>& instances, int epochs, int k, int 
         if (world_rank == 0) {  // Check if this is the root process
             // Combine centroids from all processes
             for (int cluster = 0; cluster < k; cluster++) {  // Iterate over each centroid
-                centroids[cluster].danceability = 0;  // Reset danceability for centroid 'i'
-                centroids[cluster].acousticness = 0;  // Reset acousticness for centroid 'i'
-                centroids[cluster].liveness = 0;  // Reset liveness for centroid 'i'
+                centroids[cluster].feature1 = 0;  // Reset danceability for centroid 'i'
+                centroids[cluster].feature2 = 0;  // Reset acousticness for centroid 'i'
+                centroids[cluster].feature3 = 0;  // Reset liveness for centroid 'i'
                 int totalCount = 0;  // Initialize a counter for the total number of instances in this centroid
 
-                for (Instance& centroid : allCentroids) {
+                for (Song& centroid : allCentroids) {
                     if (centroid.cluster == cluster) {
-                        centroids[cluster].danceability += centroid.danceability;
-                        centroids[cluster].acousticness += centroid.acousticness;
-                        centroids[cluster].liveness += centroid.liveness;
+                        centroids[cluster].feature1 += centroid.feature1;
+                        centroids[cluster].feature2 += centroid.feature2;
+                        centroids[cluster].feature3 += centroid.feature3;
                         totalCount += counts[cluster];
                         //std::cout << "Total Count " << totalCount << std::endl;
                     }
@@ -133,18 +133,18 @@ void kMeansDistributed(std::vector<Instance>& instances, int epochs, int k, int 
 
                 if (totalCount > 0) {  // Check if the centroid has any instances assigned
                     // Average the features of the centroid based on the total count
-                    centroids[cluster].danceability /= totalCount;
-                    centroids[cluster].acousticness /= totalCount;
-                    centroids[cluster].liveness /= totalCount;
+                    centroids[cluster].feature1 /= totalCount;
+                    centroids[cluster].feature2 /= totalCount;
+                    centroids[cluster].feature3 /= totalCount;
                 }
             }
 
             // std::cout << "Root process centroids after agg:\n";
             // for (const auto& centroid : centroids) {
             //     std::cout << "Cluster " << centroid.cluster << ": "
-            //             << "Danceability: " << centroid.danceability
-            //             << ", Acousticness: " << centroid.acousticness
-            //             << ", Liveness: " << centroid.liveness << "\n";
+            //             << "Danceability: " << centroid.feature1
+            //             << ", Acousticness: " << centroid.feature2
+            //             << ", Liveness: " << centroid.feature3 << "\n";
             // }
         }
 
@@ -170,13 +170,15 @@ int main(int argc, char** argv) {
 
     // Declarations for sendCounts and displacements
     std::vector<int> sendCounts(world_size), displacements(world_size);
-    std::vector<Instance> allInstances;
+    std::vector<Song> allInstances;
 
     if (world_rank == 0) {
         // Parse CSV and fill allInstances
         std::vector<double*> data = parseCSV(maxLines);
         for (double* row : data) {
-            allInstances.push_back(Instance(row));
+        // Assuming the first three elements of row are the features for the Song
+            Song song(row[0], row[6], row[8]);
+            allInstances.push_back(song);
         }
         totalInstances = allInstances.size();
 
@@ -196,11 +198,11 @@ int main(int argc, char** argv) {
     MPI_Bcast(displacements.data(), world_size, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Define MPI_Instance datatype
-    MPI_Type_contiguous(sizeof(Instance), MPI_BYTE, &MPI_Instance);
+    MPI_Type_contiguous(sizeof(Song), MPI_BYTE, &MPI_Instance);
     MPI_Type_commit(&MPI_Instance);
 
     // Allocate space for local instances on each process
-    std::vector<Instance> localInstances(sendCounts[world_rank]);
+    std::vector<Song> localInstances(sendCounts[world_rank]);
 
     // Distribute instances to each process
     MPI_Scatterv(allInstances.data(), sendCounts.data(), displacements.data(), MPI_Instance, 
@@ -235,8 +237,8 @@ int main(int argc, char** argv) {
         myfile.open("src/data/output.csv");
         myfile << "danceability,acousticness,liveness,cluster\n";
 
-        for (const Instance& inst : allInstances) {
-            myfile << inst.danceability << "," << inst.acousticness << "," << inst.liveness << "," << inst.cluster << "\n";
+        for (const Song& inst : allInstances) {
+            myfile << inst.feature1 << "," << inst.feature2 << "," << inst.feature3 << "," << inst.cluster << "\n";
         }
 
         myfile.close();
