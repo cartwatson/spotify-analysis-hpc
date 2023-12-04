@@ -6,8 +6,8 @@
 #include <chrono>
 #include <limits>
 
-#include "util.cpp"  // Assuming this contains necessary utility functions
-#include "cudaSong.cpp"  // Assuming this contains the definition of the Song struct
+#include "util.cpp"
+#include "cudaSong.cpp"  
 
 // nvcc -o kmeans cuda.cpp song.cpp util.cpp -lcuda -lcudart -arch=sm_86
 
