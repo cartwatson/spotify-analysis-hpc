@@ -5,6 +5,9 @@ struct Song {
     int cluster;
     double minDist;
 
+    // Default constructor
+    Song() : feature1(0), feature2(0), feature3(0), cluster(-1), minDist(__DBL_MAX__) {}
+
     Song(double f1, double f2, double f3):
         feature1(f1),
         feature2(f2),
