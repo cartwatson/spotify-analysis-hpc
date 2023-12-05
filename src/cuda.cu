@@ -129,6 +129,8 @@ void kMeansCUDA(Song* songs, int n, int epochs, int k)
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
 
+        checkCuda(cudaMemcpy(centroids, centroids_d, k * sizeof(Centroid), cudaMemcpyDeviceToHost));
+
         // Divide each centroid by its cluster size to get the average
         for (int i = 0; i < k; ++i)
         {
@@ -136,7 +138,7 @@ void kMeansCUDA(Song* songs, int n, int epochs, int k)
             centroids[i].feature2 /= centroids[i].cluster_size;
             centroids[i].feature3 /= centroids[i].cluster_size;
         }
-        checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Song), cudaMemcpyHostToDevice));
+        checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
     }
 
     checkCuda(cudaMemcpy(songs, songs_d, n * sizeof(Song), cudaMemcpyDeviceToHost));
