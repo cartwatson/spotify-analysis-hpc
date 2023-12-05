@@ -74,7 +74,7 @@ __global__ void epochIter(Song* songs, Centroid* centroids, int n)
         }
     }
     songs[gid].cluster = closestClust;
-
+    return;
     __syncthreads();
 
     // Update the centroids
