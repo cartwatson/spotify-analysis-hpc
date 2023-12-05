@@ -18,7 +18,7 @@ std::vector<double*> parseCSV(int maxLines = MAX_LINES)
     std::stringstream ss;
     std::string cell;
     
-    const int progressBarWidth = 50;  // Adjust the width of progress bar
+    const int progressBarWidth = maxLines < 50 ? maxLines : 50;
     int progressBarStep = maxLines / progressBarWidth;
     
     std::cout << "Parsing input file..." << std::endl;

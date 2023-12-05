@@ -134,6 +134,8 @@ void kMeansCUDA(Song* songs, int n, int k, int epochs)
         }
         checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Song), cudaMemcpyHostToDevice));
     }
+
+    checkCuda(cudaMemcpy(songs, songs_d, n * sizeof(Song), cudaMemcpyDeviceToHost));
 }
 
 
@@ -164,6 +166,10 @@ int main(int argc, char* argv[])
     std::cout << "Running k-means..." << std::endl;
 
     kMeansCUDA(songs, data.size(), 5, 100);
+
+    std::cout << "Finished k-means. Songs:" << std::endl;
+    for (size_t i = 0; i < data.size(); ++i)
+        std::cout << songs[i].feature1 << ", " << songs[i].feature2 << ", " << songs[i].feature3 << ", " << songs[i].cluster << std::endl;
 
     auto endkMeans = std::chrono::high_resolution_clock::now();
     duration = endkMeans - endParse;
