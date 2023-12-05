@@ -56,7 +56,7 @@ __device__ double sq_distance(Song* s1, Centroid* c)
 */
 __global__ void assignSongToCluster(Song* songs, Centroid* centroids, int n, int k)
 {
-    int gid = blockIdx.x * blockDim.x + threadIdx.x; // Global song id
+    int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if (gid < n)
         for (int c = 0; c < k; ++c)
         {
@@ -69,12 +69,12 @@ __global__ void assignSongToCluster(Song* songs, Centroid* centroids, int n, int
         }
 }
 
-__global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n, int k)
+__global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n)
 {
-    int gid = blockIdx.x * blockDim.x + threadIdx.x; // Global song id
+    int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if (gid < n)
     {
-        int cluster = songs[gid].cluster;
+        int cluster = songs[gid].cluster; // Get the cluster of each song
         atomicAdd(&centroids[cluster].feature1, songs[gid].feature1);
         atomicAdd(&centroids[cluster].feature2, songs[gid].feature2);
         atomicAdd(&centroids[cluster].feature3, songs[gid].feature3);
@@ -109,8 +109,14 @@ void kMeansCUDA(Song* songs, int n, int epochs, int k)
         int rand_idx = rng() % n;
         centroids[i] = Centroid(songs[rand_idx].feature1, songs[rand_idx].feature2, songs[rand_idx].feature3);
     }
-    checkCuda(cudaMalloc(&centroids_d, k * sizeof(Centroid)));
-    checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
+    checkCuda(cudaMalloc(&centroids_d, k*sizeof(Centroid)));
+    checkCuda(cudaMemcpy(centroids_d, centroids, k*sizeof(Centroid), cudaMemcpyHostToDevice));
+    //print all songs
+    std::cout << "Songs: " << std::endl;
+    for (int i = 0; i < n; ++i)
+    {
+        std::cout << songs[i].feature1 << ", " << songs[i].feature2 << ", " << songs[i].feature3 << std::endl;
+    }
 
     // Set up grid and block dimensions
     int nBlocks = (n + BLOCKSIZE - 1) / BLOCKSIZE;
@@ -119,29 +125,28 @@ void kMeansCUDA(Song* songs, int n, int epochs, int k)
 
     for (int epoch = 0; epoch < epochs; ++epoch)
     {
-        assignSongToCluster<<<gridDim, blockDim>>>(songs_d, centroids_d, n, k);
+        assignSongToCluster<<<gridDim, blockDim>>>(songs_d, centroids_d, n, k); // Use the centroids to assign each song to a cluster
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
 
-        checkCuda(cudaMemset(centroids_d, 0, k * sizeof(Centroid)));
+        checkCuda(cudaMemset(centroids_d, 0, k*sizeof(Centroid)));
 
-        calculateNewCentroids<<<gridDim, blockDim>>>(songs_d, centroids_d, n, k);
+        calculateNewCentroids<<<gridDim, blockDim>>>(songs_d, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
 
-        checkCuda(cudaMemcpy(centroids, centroids_d, k * sizeof(Centroid), cudaMemcpyDeviceToHost));
+        checkCuda(cudaMemcpy(centroids, centroids_d, k*sizeof(Centroid), cudaMemcpyDeviceToHost));
 
-        // Divide each centroid by its cluster size to get the average
         for (int i = 0; i < k; ++i)
         {
             centroids[i].feature1 /= centroids[i].cluster_size;
             centroids[i].feature2 /= centroids[i].cluster_size;
             centroids[i].feature3 /= centroids[i].cluster_size;
         }
-        checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
+        checkCuda(cudaMemcpy(centroids_d, centroids, k*sizeof(Centroid), cudaMemcpyHostToDevice));
     }
 
-    checkCuda(cudaMemcpy(songs, songs_d, n * sizeof(Song), cudaMemcpyDeviceToHost));
+    checkCuda(cudaMemcpy(songs, songs_d, n*sizeof(Song), cudaMemcpyDeviceToHost));
 }
 
 
