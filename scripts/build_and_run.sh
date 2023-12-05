@@ -3,11 +3,14 @@
 # IMPLEMENTATIONS
 serial_implementation() {
     echo "Compiling serial program..."
+    
     if [ -n "$TESTING" ]; then
         g++ -std=c++11 -g -Wall -DTESTING -o serial src/serial.cpp
     else
         g++ -std=c++11 -g -Wall -o serial src/serial.cpp
     fi
+
+    # Check for compilation success
     if [ $? -ne 0 ]; then
         echo "Error: Compilation failed."
         exit 1
@@ -69,17 +72,20 @@ openmp_implementation() {
 
 cuda_implementation() {
     echo "Compiling serial program..."
+    
     if [ -n "$TESTING" ]; then
         nvcc -DTESTING -o cuda src/cuda.cu
     else
         nvcc -o cuda src/cuda.cu
     fi
+    
+    # Check for compilation success
     if [ $? -ne 0 ]; then
         echo "Error: Compilation failed."
         exit 1
     fi
 
-    echo "Running serial program..."
+    echo "Running cuda program..."
     read -p "Enter command line arguments (enter for none): " -a args
     echo "Program Output:"
     ./cuda ${args[@]}
