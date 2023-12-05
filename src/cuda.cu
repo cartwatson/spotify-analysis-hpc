@@ -56,21 +56,21 @@ __global__ void assignSongToCluster(Song* songs, Centroid* centroids, int n, int
 {
     extern __shared__ Centroid shared_centroids[];
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (gid < k)
-        shared_centroids[gid] = centroids[gid];
+    if (threadIdx.x < k)
+        shared_centroids[threadIdx.x] = centroids[threadIdx.x];
     __syncthreads();
 
     if (gid < n)
     {
         double min_dist = sq_distance(&songs[gid], &shared_centroids[0]);
-        int cluster = -1;
-        for (int i = 1; i < k; ++i)
+        int cluster = 0;
+        for (int c = 1; c < k; ++c)
         {
-            double dist = sq_distance(&songs[gid], &shared_centroids[i]);
+            double dist = sq_distance(&songs[gid], &shared_centroids[c]);
             if (dist < min_dist)
             {
                 min_dist = dist;
-                cluster = i;
+                cluster = c;
             }
         }
         songs[gid].cluster = cluster;
