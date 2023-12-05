@@ -20,7 +20,11 @@ Overall our implementation for OpenMP utilized heavily the infrastructure put in
 
 ## 3. Parallel Shared Memory GPU - [`Cuda Implementation`](/src/cuda.cu)
 
-TODO: implement
+The cuda implementation keeps almost the exact same driver code as the serial and OpenMP implementations.  The only significant change is the function being called from the driver code.  At this point it's likely there's a much cleaner approach that we could've taken to not duplicate driver code and pass the K-Means Cluster function from each implementation into a util function.
+
+The implementation of the K-Means Cluster Algorithm is exactly as one would expect it to be, it follows the same pattern that's been established with previous implementations.  The benefit that implementing this with Cuda allows is that we can run on the GPU, this reduces memory overhead making this implementation significantly faster.  However it does also limit this implementation to only running on Nvidia GPUs.
+
+To sum it up, Cuda allows for faster parallelization due to it allowing us to run an implementation of the K-Means Cluster Algorithm on the GPU instead of the CPU.
 
 ## 4. Parallel Distributed Memory CPU - [`MPI Implementation`](/src/mpi.cpp)
 
