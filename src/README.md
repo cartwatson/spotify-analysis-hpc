@@ -1,6 +1,6 @@
 # Compile and Execution Instructions
 
-*`scripts/build_and_run.sh` provides a simple command line interface to compile and run all implementations.*
+*[scripts/build_and_run.sh](/scripts/build_and_run.sh) provides a simple command line interface to compile and run all implementations.*
 
 ## 1. Serial Implementation
 

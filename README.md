@@ -7,6 +7,7 @@ This project aims to implement a parallel K-Means clustering algorithm to catego
 ## Documentation
 
 - [Design Approaches](docs/design-approaches.md)
+- [Build and Run Instructions](src/README.md)
 - Scaling Studies
   - [Serial vs Shared Memory](docs/scaling-studies/serial-vs-shared-memory.md)
   - [Distributed Memory: CPU vs GPU](docs/scaling-studies/distributed-memory.md)
