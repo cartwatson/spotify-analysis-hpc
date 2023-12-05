@@ -124,9 +124,11 @@ void kMeansCUDA(Song* songs, int n, int epochs, int k)
     dim3 gridDim(nBlocks, 1, 1);
     dim3 blockDim(BLOCKSIZE, 1, 1);
 
+    int sharedMemSize = k*sizeof(Centroid);
+
     for (int epoch = 0; epoch < epochs; ++epoch)
     {
-        assignSongToCluster<<<gridDim, blockDim>>>(songs_d, centroids_d, n, k); // Use the centroids to assign each song to a cluster
+        assignSongToCluster<<<gridDim, blockDim, sharedMemSize>>>(songs_d, centroids_d, n, k);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
 
