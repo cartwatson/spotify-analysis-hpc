@@ -31,7 +31,7 @@ struct Centroid {
     float feature1, feature2, feature3;
     int cluster_size;
 
-    Centroid(): feature1(0.0), feature2(0.0), feature3(0.0), cluster_size(0) {}
+    __host__ __device__ Centroid(): feature1(0.0), feature2(0.0), feature3(0.0), cluster_size(0) {}
 
     Centroid(float f1, float f2, float f3):
         feature1(f1),
