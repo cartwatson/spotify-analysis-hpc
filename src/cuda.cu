@@ -109,8 +109,8 @@ void kMeansCUDA(Song* songs, int n, int epochs, int k)
         int rand_idx = rng() % n;
         centroids[i] = Centroid(songs[rand_idx].feature1, songs[rand_idx].feature2, songs[rand_idx].feature3);
     }
-    checkCuda(cudaMalloc(&centroids_d, k * sizeof(Song)));
-    checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Song), cudaMemcpyHostToDevice));
+    checkCuda(cudaMalloc(&centroids_d, k * sizeof(Centroid)));
+    checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
 
     // Set up grid and block dimensions
     int nBlocks = (n + BLOCKSIZE - 1) / BLOCKSIZE;
