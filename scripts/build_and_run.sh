@@ -67,6 +67,27 @@ openmp_implementation() {
     rm omp
 }
 
+cuda_implementation() {
+    echo "Compiling serial program..."
+    if [ -n "$TESTING" ]; then
+        nvcc -DTESTING -o cuda src/cuda.cu
+    else
+        nvcc -o cuda src/cuda.cu
+    fi
+    if [ $? -ne 0 ]; then
+        echo "Error: Compilation failed."
+        exit 1
+    fi
+
+    echo "Running serial program..."
+    read -p "Enter command line arguments (enter for none): " -a args
+    echo "Program Output:"
+    ./cuda ${args[@]}
+
+    echo "Program executed successfully"
+    echo "Cleaning up..."
+    rm cuda
+}
 
 mpi_implementation() {
     echo "Compiling mpi program..."
@@ -104,6 +125,9 @@ case $choice in
         ;;
     2)
         openmp_implementation
+        ;;
+    3)
+        cuda_implementation
         ;;
     4)
         mpi_implementation
