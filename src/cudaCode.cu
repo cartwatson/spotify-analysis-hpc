@@ -1,5 +1,5 @@
 // Include Directives
-//#include <cuda_runtime.h>
+#include <cuda_runtime.h>
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -85,6 +85,7 @@ __global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n)
 }
 
 // Wrapper function for assignSongToCluster kernel
+
 extern "C" void callAssignSongToCluster(Song * songs, Centroid * centroids, int n, int k) {
     // Example: Assuming you want to use 256 threads per block
     int threadsPerBlock = 256;
@@ -124,4 +125,64 @@ extern "C" void callCalculateNewCentroids(Song * songs, Centroid * centroids, in
         fprintf(stderr, "CUDA error: %s\n", cudaGetErrorString(error));
         // Optionally, throw an exception or perform other error handling
     }
+}
+
+// Definitions of CUDA wrapper functions
+extern "C" void allocateMemoryAndCopyToGPU(Song** deviceSongs, Centroid** deviceCentroids, const Song* hostSongs, const Centroid* hostCentroids, int numSongs, int numCentroids) {
+    // Allocate memory for songs on the device
+    checkCuda(cudaMalloc(deviceSongs, numSongs * sizeof(Song)));
+    checkCuda(cudaMemcpy(*deviceSongs, hostSongs, numSongs * sizeof(Song), cudaMemcpyHostToDevice));
+
+    // Allocate memory for centroids on the device
+    checkCuda(cudaMalloc(deviceCentroids, numCentroids * sizeof(Centroid)));
+    checkCuda(cudaMemcpy(*deviceCentroids, hostCentroids, numCentroids * sizeof(Centroid), cudaMemcpyHostToDevice));
+    // The code replaced in mainProgram:
+    // checkCuda(cudaMalloc(&localSongs_d, localN * sizeof(Song)));
+    // checkCuda(cudaMemcpy(localSongs_d, localSongs, localN * sizeof(Song), cudaMemcpyHostToDevice));
+    // checkCuda(cudaMalloc(&centroids_d, k * sizeof(Centroid)));
+    // checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
+}
+
+extern "C" void freeGPUMemory(Song* deviceSongs, Centroid* deviceCentroids) {
+    checkCuda(cudaFree(deviceSongs));
+    checkCuda(cudaFree(deviceCentroids));
+    // Replaced code
+    // checkCuda(cudaFree(localSongs_d));
+    // checkCuda(cudaFree(centroids_d));
+}
+
+extern "C" void gpuErrorCheck() {
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        std::cerr << "CUDA error: " << cudaGetErrorString(error) << std::endl;
+        assert(error == cudaSuccess);
+    }
+    checkCuda(cudaDeviceSynchronize());
+    // // Replaced
+    // checkCuda(cudaGetLastError());
+    // checkCuda(cudaDeviceSynchronize());
+
+}
+
+extern "C" void resetCentroids(Centroid* centroids_d, int k) {
+    checkCuda(cudaMemset(centroids_d, 0, k * sizeof(Centroid)));
+    // Replaced
+    // checkCuda(cudaMemset(centroids_d, 0, k * sizeof(Centroid)));
+}
+
+extern "C" void copyCentroidsToHost(Centroid* centroids, Centroid* centroids_d, int k) {
+    checkCuda(cudaMemcpy(centroids, centroids_d, k * sizeof(Centroid), cudaMemcpyDeviceToHost));
+    // replaced
+     //   checkCuda(cudaMemcpy(centroids, centroids_d, k * sizeof(Centroid), cudaMemcpyDeviceToHost));
+
+}
+
+extern "C" void copyCentroidsToDevice(Centroid* deviceCentroids, Centroid* hostCentroids, int k) {
+    checkCuda(cudaMemcpy(deviceCentroids, hostCentroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
+// checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
+}
+
+extern "C" void copySongsToHost(Song* hostSongs, Song* deviceSongs, int localN) {
+    checkCuda(cudaMemcpy(hostSongs, deviceSongs, localN * sizeof(Song), cudaMemcpyDeviceToHost));
+// checkCuda(cudaMemcpy(localSongs, localSongs_d, localN * sizeof(Song), cudaMemcpyDeviceToHost));
 }

@@ -8,10 +8,7 @@
 #include <assert.h>
 
 #include "util.cpp"
-extern "C" {
-    void callAssignSongToCluster(Song* songs, Centroid* centroids, int n, int k);
-    void callCalculateNewCentroids(Song* songs, Centroid* centroids, int n);
-}
+
 struct Song {
     float feature1, feature2, feature3;
     int cluster;
@@ -39,6 +36,18 @@ struct Centroid {
         cluster_size(0)
     {}
 };
+
+extern "C" {
+    void callAssignSongToCluster(Song* songs, Centroid* centroids, int n, int k);
+    void callCalculateNewCentroids(Song* songs, Centroid* centroids, int n);
+    void allocateMemoryAndCopyToGPU(Song** deviceSongs, Centroid** deviceCentroids, const Song* hostSongs, const Centroid* hostCentroids, int numSongs, int numCentroids);
+    void freeGPUMemory(Song* deviceSongs, Centroid* deviceCentroids);
+    void gpuErrorCheck();
+    void resetCentroids(Centroid* centroids_d, int k);
+    void copyCentroidsToHost(Centroid* centroids, Centroid* centroids_d, int k);
+    void copyCentroidsToDevice(Centroid* deviceCentroids, Centroid* hostCentroids, int k);
+    void copySongsToHost(Song* hostSongs, Song* deviceSongs, int localN);
+}
 
 void distributeData(MPI_Datatype MPI_Song, std::vector<Song>& allSongs, std::vector<Song>& localSongs, int world_size, int world_rank) {
     int totalSongs;
@@ -113,33 +122,24 @@ void kMeansCUDAMPI(Song* localSongs, int localN, int epochs, int k, int world_si
     // Broadcast centroids from the root process to all other processes
     MPI_Bcast(centroids, k * sizeof(Centroid), MPI_BYTE, 0, MPI_COMM_WORLD);
 
-    // Allocate memory on GPU and copy initial data
-    checkCuda(cudaMalloc(&localSongs_d, localN * sizeof(Song)));
-    checkCuda(cudaMemcpy(localSongs_d, localSongs, localN * sizeof(Song), cudaMemcpyHostToDevice));
-    checkCuda(cudaMalloc(&centroids_d, k * sizeof(Centroid)));
-    checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
-
-    //int nBlocks = (localN + BLOCKSIZE - 1) / BLOCKSIZE;
-    //dim3 gridDim(nBlocks, 1, 1);
-    //dim3 blockDim(BLOCKSIZE, 1, 1);
+    // Call the wrapper function to allocate memory on the GPU and copy data
+    allocateMemoryAndCopyToGPU(&localSongs_d, &centroids_d, localSongs, centroids, localN, k * sizeof(Centroid));
 
     for (int epoch = 0; epoch < epochs; ++epoch) {
         // Assign each song to the nearest centroid using GPU
-        callAssignSongToCluster << <gridDim, blockDim >> > (localSongs_d, centroids_d, localN, k);
-        checkCuda(cudaGetLastError());
-        checkCuda(cudaDeviceSynchronize());
-
+        callAssignSongToCluster(localSongs_d, centroids_d, localN, k);
+        gpuErrorCheck();
+        
         // Reset centroids for next calculation
-        checkCuda(cudaMemset(centroids_d, 0, k * sizeof(Centroid)));
+        resetCentroids(centroids_d, k);
 
         // Update centroids based on current assignment
-        callCalculateNewCentroids << <gridDim, blockDim >> > (localSongs_d, centroids_d, localN);
-        checkCuda(cudaGetLastError());
-        checkCuda(cudaDeviceSynchronize());
+        callCalculateNewCentroids(localSongs_d, centroids_d, localN);
+        gpuErrorCheck();
 
         // Copy updated centroids back to host
-        checkCuda(cudaMemcpy(centroids, centroids_d, k * sizeof(Centroid), cudaMemcpyDeviceToHost));
-
+        copyCentroidsToHost(centroids, centroids_d, k);
+        
         // Root process aggregates centroids from all processes
         MPI_Gather(centroids, k * sizeof(Centroid), MPI_BYTE,
             allCentroids.data(), k * sizeof(Centroid), MPI_BYTE, 0, MPI_COMM_WORLD);
@@ -173,15 +173,14 @@ void kMeansCUDAMPI(Song* localSongs, int localN, int epochs, int k, int world_si
         MPI_Bcast(centroids, k * sizeof(Centroid), MPI_BYTE, 0, MPI_COMM_WORLD);
 
         // Copy updated centroids back to device for next iteration
-        checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
+        copyCentroidsToDevice(centroids_d, centroids, k);
     }
 
     // Copy final results back to host
-    checkCuda(cudaMemcpy(localSongs, localSongs_d, localN * sizeof(Song), cudaMemcpyDeviceToHost));
+    copySongsToHost(localSongs, localSongs_d, localN);
 
     // Free GPU memory
-    checkCuda(cudaFree(localSongs_d));
-    checkCuda(cudaFree(centroids_d));
+    freeGPUMemory(localSongs_d, centroids_d);
 
     // Clean up
     delete[] centroids;
@@ -200,15 +199,21 @@ int main(int argc, char** argv) {
     MPI_Type_commit(&MPI_Song);
 
     // Prepare data
-    std::vector<Song> allSongs, localSongs;
-    int maxLines = 250000;  // You can modify this as per your data size
+    std::vector<Song> allSongs;
+    std::vector<Song> localSongs;
+    std::vector<double*> rawData;
+    int maxLines = 250000;
 
     if (world_rank == 0) {
-        // Load data into allSongs on the root process
-        // This assumes parseCSV function is available and fills allSongs with data
-        allSongs = parseCSV(maxLines);
-    }
+        rawData = parseCSV(maxLines);  // This will hold raw feature data from the CSV
 
+        // Transform rawData into a vector of Song structures
+        allSongs.reserve(rawData.size());
+        for (double* features : rawData) {
+            allSongs.emplace_back(features[0], features[1], features[2]);
+            delete[] features;
+        }
+    }
     // Distribute data among MPI processes
     distributeData(MPI_Song, allSongs, localSongs, world_size, world_rank);
 
@@ -222,8 +227,27 @@ int main(int argc, char** argv) {
 
     // Write output to file if root process
     if (world_rank == 0) {
-        // Assume writeCSV is a function that writes data to a CSV file
-        writeCSV(allSongs, "output.csv");
+        // Construct the header for the CSV
+        std::string header = "Feature1,Feature2,Feature3,Cluster\n";
+
+        // Prepare the data in the format expected by writeCSV
+        std::vector<double*> csvData;
+        for (const Song& song : allSongs) {
+            double* row = new double[4];
+            row[0] = song.feature1;
+            row[1] = song.feature2;
+            row[2] = song.feature3;
+            row[3] = static_cast<double>(song.cluster);  // Cast int to double
+            csvData.push_back(row);
+        }
+
+        // Write the CSV file
+        writeCSV(csvData, "output.csv", header);
+
+        // Clean up the allocated arrays for CSV data
+        for (double* row : csvData) {
+            delete[] row;
+        }
     }
 
     // Finalize MPI
