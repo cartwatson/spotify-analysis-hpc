@@ -91,13 +91,17 @@ inline cudaError_t checkCuda(cudaError_t result)
     return result;
 }
 
-void kMeansCUDA(Song* songs, int n, int k, int epochs)
+void kMeansCUDA(Song* songs, int n, int epochs, int k)
 {
     Song* songs_d;
     checkCuda(cudaMalloc(&songs_d, n * sizeof(Song)));
     checkCuda(cudaMemcpy(songs_d, songs, n * sizeof(Song), cudaMemcpyHostToDevice));
 
+    #ifdef TESTING
     std::mt19937 rng(123);
+    #else
+    std::mt19937 rng(static_cast<unsigned>(std::time(0)));
+    #endif
     Centroid* centroids = new Centroid[k];
     Centroid* centroids_d;
     for (int i = 0; i < k; ++i)
