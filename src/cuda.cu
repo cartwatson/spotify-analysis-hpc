@@ -55,21 +55,23 @@ __device__ double sq_distance(Song* s1, Centroid* c)
 __global__ void assignSongToCluster(Song* songs, Centroid* centroids, int n, int k)
 {
     extern __shared__ Centroid shared_centroids[];
-    
+
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    float minDist = 100000000;
+    if (gid < k)
+        shared_centroids[gid] = centroids[gid]; // Threads < k copy the centroids to shared memory
+    __syncthreads();
+    
+    float min_dist = 1000000000;
     int cluster = -1;
     if (gid < n)
     {
-        for (int c = 0; c < k; c++)
+        for (int i = 0; i < k; ++i)
         {
-            shared_centroids[c] = centroids[c];
-            __syncthreads();
-            double dist = sq_distance(&songs[gid], &shared_centroids[c]);
-            if (dist < minDist)
+            double dist = sq_distance(&songs[gid], &shared_centroids[i]);
+            if (dist < min_dist)
             {
-                minDist = dist;
-                cluster = c;
+                min_dist = dist;
+                cluster = i;
             }
         }
         songs[gid].cluster = cluster;
