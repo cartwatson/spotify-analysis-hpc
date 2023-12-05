@@ -9,6 +9,8 @@
 #include "util.cpp"
 
 #define BLOCKSIZE 256
+#define EPOCHS 100
+#define K 5
 
 
 struct Song {
@@ -52,19 +54,19 @@ __device__ double sq_distance(Song* s1, Centroid* c)
 /**
  * Assigns each song to the cluster with the closest centroid
 */
-__global__ void assignSongToCluster(Song* songs, Centroid* centroids, int n, int k)
+__global__ void assignSongToCluster(Song* songs, Centroid* centroids, int n)
 {
-    extern __shared__ Centroid shared_centroids[];
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (threadIdx.x < k)
+    __shared__ Centroid shared_centroids[K];
+    if (threadIdx.x < K)
         shared_centroids[threadIdx.x] = centroids[threadIdx.x];
     __syncthreads();
 
+    int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if (gid < n)
     {
         double min_dist = sq_distance(&songs[gid], &shared_centroids[0]);
         int cluster = 0;
-        for (int c = 1; c < k; ++c)
+        for (int c = 1; c < K; ++c)
         {
             double dist = sq_distance(&songs[gid], &shared_centroids[c]);
             if (dist < min_dist)
@@ -99,7 +101,7 @@ inline cudaError_t checkCuda(cudaError_t result)
     return result;
 }
 
-void kMeansCUDA(Song* songs, int n, int epochs, int k)
+void kMeansCUDA(Song* songs, int n)
 {
     Song* songs_d;
     checkCuda(cudaMalloc(&songs_d, n * sizeof(Song)));
@@ -110,44 +112,42 @@ void kMeansCUDA(Song* songs, int n, int epochs, int k)
     #else
     std::mt19937 rng(static_cast<unsigned>(std::time(0)));
     #endif
-    Centroid* centroids = new Centroid[k];
+    Centroid centroids[K];
     Centroid* centroids_d;
-    for (int i = 0; i < k; ++i)
+    for (int i = 0; i < K; ++i)
     {
         int rand_idx = rng() % n;
         centroids[i] = Centroid(songs[rand_idx].feature1, songs[rand_idx].feature2, songs[rand_idx].feature3);
     }
-    checkCuda(cudaMalloc(&centroids_d, k*sizeof(Centroid)));
-    checkCuda(cudaMemcpy(centroids_d, centroids, k*sizeof(Centroid), cudaMemcpyHostToDevice));
+    long centroid_size = K*sizeof(Centroid);
+    checkCuda(cudaMalloc(&centroids_d, centroid_size));
+    checkCuda(cudaMemcpy(centroids_d, centroids, centroid_size, cudaMemcpyHostToDevice));
 
     int nBlocks = (n + BLOCKSIZE - 1) / BLOCKSIZE;
     dim3 gridDim(nBlocks, 1, 1);
     dim3 blockDim(BLOCKSIZE, 1, 1);
 
-    int sharedMemSize = k*sizeof(Centroid);
-
-    for (int epoch = 0; epoch < epochs; ++epoch)
+    for (int epoch = 0; epoch < EPOCHS; ++epoch)
     {
-        assignSongToCluster<<<gridDim, blockDim, sharedMemSize>>>(songs_d, centroids_d, n, k);
+        assignSongToCluster<<<gridDim, blockDim>>>(songs_d, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
 
-        checkCuda(cudaMemset(centroids_d, 0, k*sizeof(Centroid)));
+        checkCuda(cudaMemset(centroids_d, 0, centroid_size));
 
         calculateNewCentroids<<<gridDim, blockDim>>>(songs_d, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
 
-        checkCuda(cudaMemcpy(centroids, centroids_d, k*sizeof(Centroid), cudaMemcpyDeviceToHost));
-        for (int i = 0; i < k; ++i)
+        checkCuda(cudaMemcpy(centroids, centroids_d, centroid_size, cudaMemcpyDeviceToHost));
+        for (int i = 0; i < K; ++i)
         {
             centroids[i].feature1 /= centroids[i].cluster_size;
             centroids[i].feature2 /= centroids[i].cluster_size;
             centroids[i].feature3 /= centroids[i].cluster_size;
         }
-        checkCuda(cudaMemcpy(centroids_d, centroids, k*sizeof(Centroid), cudaMemcpyHostToDevice));
+        checkCuda(cudaMemcpy(centroids_d, centroids, centroid_size, cudaMemcpyHostToDevice));
     }
-
     checkCuda(cudaMemcpy(songs, songs_d, n*sizeof(Song), cudaMemcpyDeviceToHost));
 }
 
@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
     
     std::cout << "Running k-means..." << std::endl;
 
-    kMeansCUDA(songs, data.size(), 100, 5);
+    kMeansCUDA(songs, data.size());
 
     auto endkMeans = std::chrono::high_resolution_clock::now();
     duration = endkMeans - endParse;
