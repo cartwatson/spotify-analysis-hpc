@@ -167,10 +167,6 @@ int main(int argc, char* argv[])
 
     kMeansCUDA(songs, data.size(), 5, 100);
 
-    std::cout << "Finished k-means. Songs:" << std::endl;
-    for (size_t i = 0; i < data.size(); ++i)
-        std::cout << songs[i].feature1 << ", " << songs[i].feature2 << ", " << songs[i].feature3 << ", " << songs[i].cluster << std::endl;
-
     auto endkMeans = std::chrono::high_resolution_clock::now();
     duration = endkMeans - endParse;
     std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
@@ -179,9 +175,9 @@ int main(int argc, char* argv[])
     std::string header = featureNames[0] + "," + featureNames[1] + "," + featureNames[2] + ",cluster";
 
     std::vector<double*> output;
-    double* row = new double[4];
     for (size_t i = 0; i < data.size(); ++i)
     {
+        double* row = new double[4];
         row[0] = songs[i].feature1;
         row[1] = songs[i].feature2;
         row[2] = songs[i].feature3;
