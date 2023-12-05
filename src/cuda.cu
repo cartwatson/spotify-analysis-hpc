@@ -21,7 +21,7 @@ struct Song {
         feature1(f1),
         feature2(f2),
         feature3(f3),
-        cluster(-1),
+        cluster(-1)
     {}
 };
 
