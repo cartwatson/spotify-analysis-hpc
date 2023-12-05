@@ -4,12 +4,18 @@
 
 This project aims to implement a parallel K-Means clustering algorithm to categorize a dataset of 1.2 million songs from Spotify using various metrics provided. The algorithm is designed to work flexibly with different numbers of clusters (K), allowing users to experiment and visualize the clustering behavior based on their selected value of K.
 
+## Documentation
+
+- [Design Approaches](docs/design-approaches.md)
+- Scaling Studies
+  - [Serial vs Shared Memory](docs/scaling-studies/serial-vs-shared-memory.md)
+  - [Distributed Memory: CPU vs GPU](docs/scaling-studies/distributed-memory.md)
+
 ## Requirements
 
 - C++11 or greater
 - Python >3.10
-- Python Libraries:
-  - [`scripts/requirements.txt`](scripts/requirements.txt)
+- Python Libraries: [`scripts/requirements.txt`](scripts/requirements.txt)
 
 ## Usage
 
@@ -17,7 +23,7 @@ This project aims to implement a parallel K-Means clustering algorithm to catego
 
 - Use `scripts/build_and_run.sh` to build and run your desired implementation
 - Use `scripts/validation.sh` to validate all implementations produce the same results
-- Use `scripts/visualize.sh` to visualize results of your most recent implementation
+- Use `scripts/visualize.sh` to visualize results of your most recently run implementation
   1. to run this on wsl (ubuntu 20.04) run the following commands `sudo apt install x11-apps libxcb-* libxkb*`
   1. then in powershell run `wsl --update`, `wsl --shutdown`
   1. back in wsl `pip uninstall pyqt5 pyqt5-qt5 pyqt5-sip`
@@ -35,4 +41,4 @@ This project aims to implement a parallel K-Means clustering algorithm to catego
 ## References 
 
 - [kaggle data](https://www.kaggle.com/datasets/rodolfofigueroa/spotify-12m-songs)
-- [k-means clustering](http://reasonabledeviations.com/2019/10/02/k-means-in-cpp/)
+- [k-means clustering explanation and serial implementation](http://reasonabledeviations.com/2019/10/02/k-means-in-cpp/)
