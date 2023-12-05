@@ -111,14 +111,7 @@ void kMeansCUDA(Song* songs, int n, int epochs, int k)
     }
     checkCuda(cudaMalloc(&centroids_d, k*sizeof(Centroid)));
     checkCuda(cudaMemcpy(centroids_d, centroids, k*sizeof(Centroid), cudaMemcpyHostToDevice));
-    //print all songs
-    std::cout << "Songs: " << std::endl;
-    for (int i = 0; i < n; ++i)
-    {
-        std::cout << songs[i].feature1 << ", " << songs[i].feature2 << ", " << songs[i].feature3 << std::endl;
-    }
 
-    // Set up grid and block dimensions
     int nBlocks = (n + BLOCKSIZE - 1) / BLOCKSIZE;
     dim3 gridDim(nBlocks, 1, 1);
     dim3 blockDim(BLOCKSIZE, 1, 1);
@@ -176,7 +169,7 @@ int main(int argc, char* argv[])
     
     std::cout << "Running k-means..." << std::endl;
 
-    kMeansCUDA(songs, data.size(), 5, 100);
+    kMeansCUDA(songs, data.size(), 100, 5);
 
     auto endkMeans = std::chrono::high_resolution_clock::now();
     duration = endkMeans - endParse;
