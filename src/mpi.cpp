@@ -75,7 +75,6 @@ void kMeansDistributed(std::vector<Song>& instances, int epochs, int k, int worl
         std::vector<int> counts(k, 0);  // Create a vector to count the number of instances in each cluster
 
         for (Song& inst : instances) {  // Iterate over each instance
-            //std::cout << "Cluster: " << inst.cluster << std::endl;
             newCentroids[inst.cluster].feature1 += inst.feature1;  // Sum danceability for the cluster
             newCentroids[inst.cluster].feature2 += inst.feature2;  // Sum acousticness for the cluster
             newCentroids[inst.cluster].feature3 += inst.feature3;  // Sum liveness for the cluster
@@ -88,29 +87,8 @@ void kMeansDistributed(std::vector<Song>& instances, int epochs, int k, int worl
             allCentroids.resize(k * world_size);
         }
 
-        //Print newCentroids before MPI_Gather
-        // std::cout << "Process " << world_rank << " newCentroids before gather:\n";
-        // for (int i = 0; i < newCentroids.size(); i++) {
-        //         std::cout << "Cluster " << newCentroids[i].cluster << ": "
-        //                 << "Danceability: " << newCentroids[i].feature1
-        //                 << ", Acousticness: " << newCentroids[i].feature2
-        //                 << ", Liveness: " << newCentroids[i].feature3 << "\n";
-        // }
-
         MPI_Gather(newCentroids.data(), k, MPI_Instance,
                 allCentroids.data(), k, MPI_Instance, 0, MPI_COMM_WORLD);
-
-        //Print allCentroids after MPI_Gather on the root process
-        // if (world_rank == 0) {
-        //     std::cout << "Root process allCentroids after gather:\n";
-        //     //for (const auto& centroid : allCentroids) {
-        //     for (int i = 0; i < allCentroids.size(); i++) {
-        //         std::cout << "Cluster " << allCentroids[i].cluster << ": "
-        //                 << "Danceability: " << allCentroids[i].feature1
-        //                 << ", Acousticness: " << allCentroids[i].feature2
-        //                 << ", Liveness: " << allCentroids[i].feature3 << "\n";
-        //     }
-        // }
 
         // Aggregate centroids at the root and then broadcast them
         if (world_rank == 0) {  // Check if this is the root process
@@ -138,14 +116,6 @@ void kMeansDistributed(std::vector<Song>& instances, int epochs, int k, int worl
                     centroids[cluster].feature3 /= totalCount;
                 }
             }
-
-            // std::cout << "Root process centroids after agg:\n";
-            // for (const auto& centroid : centroids) {
-            //     std::cout << "Cluster " << centroid.cluster << ": "
-            //             << "Danceability: " << centroid.feature1
-            //             << ", Acousticness: " << centroid.feature2
-            //             << ", Liveness: " << centroid.feature3 << "\n";
-            // }
         }
 
         // Broadcast the updated centroids to all processes
@@ -176,7 +146,7 @@ int main(int argc, char** argv) {
         // Parse CSV and fill allInstances
         std::vector<double*> data = parseCSV(maxLines);
         for (double* row : data) {
-        // Assuming the first three elements of row are the features for the Song
+            // Grab the features for the song
             Song song(row[0], row[6], row[8]);
             allInstances.push_back(song);
         }
