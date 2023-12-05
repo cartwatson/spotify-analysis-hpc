@@ -14,16 +14,14 @@
 struct Song {
     float feature1, feature2, feature3;
     int cluster;
-    double minDist;
 
-    Song(): feature1(0.0), feature2(0.0), feature3(0.0), cluster(-1), minDist(100000000) {}
+    Song(): feature1(0.0), feature2(0.0), feature3(0.0), cluster(-1) {}
 
     Song(float f1, float f2, float f3):
         feature1(f1),
         feature2(f2),
         feature3(f3),
         cluster(-1),
-        minDist(100000000) // Our data will never be even close to this far apart
     {}
 };
 
@@ -57,16 +55,19 @@ __device__ double sq_distance(Song* s1, Centroid* c)
 __global__ void assignSongToCluster(Song* songs, Centroid* centroids, int n, int k)
 {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    float minDist = 100000000;
+    int cluster = -1;
     if (gid < n)
         for (int c = 0; c < k; ++c)
         {
             double dist = sq_distance(&songs[gid], &centroids[c]);
-            if (dist < songs[gid].minDist)
+            if (dist < minDist)
             {
-                songs[gid].minDist = dist;
-                songs[gid].cluster = c;
+                minDist = dist;
+                cluster = c;
             }
         }
+    songs[gid].cluster = cluster;
 }
 
 __global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n)
@@ -129,7 +130,6 @@ void kMeansCUDA(Song* songs, int n, int epochs, int k)
         checkCuda(cudaDeviceSynchronize());
 
         checkCuda(cudaMemcpy(centroids, centroids_d, k*sizeof(Centroid), cudaMemcpyDeviceToHost));
-
         for (int i = 0; i < k; ++i)
         {
             centroids[i].feature1 /= centroids[i].cluster_size;
