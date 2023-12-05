@@ -91,7 +91,10 @@ cuda_implementation() {
 
 mpi_implementation() {
     echo "Compiling mpi program..."
+
     mpic++ -std=c++11 -o mpi src/mpi.cpp
+
+    # Check for compilation success
     if [ $? -ne 0 ]; then
         echo "Error: Compilation failed."
         exit 1

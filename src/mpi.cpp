@@ -10,7 +10,8 @@
 #include "song.cpp"
 
 MPI_Datatype MPI_Song;
-std::ostream& operator<<(std::ostream& os, const Song& song) {
+std::ostream& operator<<(std::ostream& os, const Song& song)
+{
     os << "Danceability: " << song.feature1 
        << ", Acousticness: " << song.feature2 
        << ", Liveness: " << song.feature3 
@@ -18,7 +19,8 @@ std::ostream& operator<<(std::ostream& os, const Song& song) {
     return os;
 }
 
-void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_size, int world_rank) {
+void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_size, int world_rank)
+{
     int n = songs.size();
     std::vector<Song> centroids(k);
     std::vector<Song> allCentroids;
@@ -30,13 +32,20 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
     }
 
     // Randomly initialize centroids
-    if (world_rank == 0) {
+    if (world_rank == 0)
+    {
+        #ifdef TESTING
+        std::mt19937 rng(123);
+        #else
         std::mt19937 rng(static_cast<unsigned>(std::time(0)));
+        #endif
         std::uniform_int_distribution<int> uni(0, n - 1);
 
-        for (int i = 0; i < k; ++i) {
+        for (int i = 0; i < k; ++i)
+        {
             int randomIndex = uni(rng);
-            if (randomIndex < 0 || randomIndex >= n) {
+            if (randomIndex < 0 || randomIndex >= n)
+            {
                 std::cerr << "Error: Random index out of bounds." << std::endl;
                 return;
             }
@@ -52,7 +61,8 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
         MPI_Abort(MPI_COMM_WORLD, err); // Abort on error
     }
 
-    for (int epoch = 0; epoch < epochs; ++epoch) {        
+    for (int epoch = 0; epoch < epochs; ++epoch)
+    {
         // Assign points to the nearest centroid
         for (Song& song : songs) {  // Iterates over each song in the dataset
             double minDist = __DBL_MAX__;  // Initialize minimum distance to the maximum possible double value
@@ -68,8 +78,6 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
             song.cluster = closestCluster;  // Assign the song to the cluster of the closest centroid
         }
 
-
-
         // Calculate new centroids locally
         std::vector<Song> newCentroids(k);  // Create a vector to store new centroids for each cluster
         std::vector<int> counts(k, 0);  // Create a vector to count the number of songs in each cluster
@@ -84,45 +92,29 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
         }
 
         // Check if the current process is the root process (usually process 0)
-        if (world_rank == 0) {
+        if (world_rank == 0)
+        {
             allCentroids.resize(k * world_size);
         }
-
-        //Print newCentroids before MPI_Gather
-        // std::cout << "Process " << world_rank << " newCentroids before gather:\n";
-        // for (int i = 0; i < newCentroids.size(); i++) {
-        //         std::cout << "Cluster " << newCentroids[i].cluster << ": "
-        //                 << "Danceability: " << newCentroids[i].feature1
-        //                 << ", Acousticness: " << newCentroids[i].feature2
-        //                 << ", Liveness: " << newCentroids[i].feature3 << "\n";
-        // }
 
         MPI_Gather(newCentroids.data(), k, MPI_Song,
                 allCentroids.data(), k, MPI_Song, 0, MPI_COMM_WORLD);
 
-        //Print allCentroids after MPI_Gather on the root process
-        // if (world_rank == 0) {
-        //     std::cout << "Root process allCentroids after gather:\n";
-        //     //for (const auto& centroid : allCentroids) {
-        //     for (int i = 0; i < allCentroids.size(); i++) {
-        //         std::cout << "Cluster " << allCentroids[i].cluster << ": "
-        //                 << "Danceability: " << allCentroids[i].feature1
-        //                 << ", Acousticness: " << allCentroids[i].feature2
-        //                 << ", Liveness: " << allCentroids[i].feature3 << "\n";
-        //     }
-        // }
-
         // Aggregate centroids at the root and then broadcast them
-        if (world_rank == 0) {  // Check if this is the root process
+        if (world_rank == 0) // Check if this is the root process
+        {
             // Combine centroids from all processes
-            for (int cluster = 0; cluster < k; cluster++) {  // Iterate over each centroid
+            for (int cluster = 0; cluster < k; cluster++) // Iterate over each centroid
+            {
                 centroids[cluster].feature1 = 0;  // Reset danceability for centroid 'i'
                 centroids[cluster].feature2 = 0;  // Reset acousticness for centroid 'i'
                 centroids[cluster].feature3 = 0;  // Reset liveness for centroid 'i'
                 int totalCount = 0;  // Initialize a counter for the total number of songs in this centroid
 
-                for (Song& centroid : allCentroids) {
-                    if (centroid.cluster == cluster) {
+                for (Song& centroid : allCentroids)
+                {
+                    if (centroid.cluster == cluster)
+                    {
                         centroids[cluster].feature1 += centroid.feature1;
                         centroids[cluster].feature2 += centroid.feature2;
                         centroids[cluster].feature3 += centroid.feature3;
@@ -131,21 +123,14 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
                     }
                 }
 
-                if (totalCount > 0) {  // Check if the centroid has any songs assigned
+                if (totalCount > 0) // Check if the centroid has any instances assigned
+                {
                     // Average the features of the centroid based on the total count
                     centroids[cluster].feature1 /= totalCount;
                     centroids[cluster].feature2 /= totalCount;
                     centroids[cluster].feature3 /= totalCount;
                 }
             }
-
-            // std::cout << "Root process centroids after agg:\n";
-            // for (const auto& centroid : centroids) {
-            //     std::cout << "Cluster " << centroid.cluster << ": "
-            //             << "Danceability: " << centroid.feature1
-            //             << ", Acousticness: " << centroid.feature2
-            //             << ", Liveness: " << centroid.feature3 << "\n";
-            // }
         }
 
         // Broadcast the updated centroids to all processes
@@ -153,7 +138,8 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
     }
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     MPI_Init(&argc, &argv);
 
     int world_size, world_rank;
@@ -175,12 +161,14 @@ int main(int argc, char** argv) {
     std::vector<int> sendCounts(world_size), displacements(world_size);
     std::vector<Song> allSongs;
 
-    if (world_rank == 0) {
+    if (world_rank == 0)
+    {
         std::cout << "maxLines = " << maxLines << std::endl;
         // Parse CSV and fill allSongs
         std::vector<double*> data = parseCSV(maxLines);
-        for (double* row : data) {
-        // Assuming the first three elements of row are the features for the Song
+        for (double* row : data)
+        {
+            // Grab the features for the song
             Song song(row[0], row[6], row[8]);
             allSongs.push_back(song);
         }
@@ -190,7 +178,8 @@ int main(int argc, char** argv) {
         int remaining = totalSongs % world_size;
 
         // Fill sendCounts and displacements based on allSongs
-        for (int i = 0; i < world_size; ++i) {
+        for (int i = 0; i < world_size; ++i)
+        {
             sendCounts[i] = songsPerProcess + (i < remaining ? 1 : 0);
             displacements[i] = (i == 0 ? 0 : displacements[i - 1] + sendCounts[i - 1]);
         }
@@ -222,7 +211,8 @@ int main(int argc, char** argv) {
 
     // Prepare for gathering
     std::vector<int> recvCounts(world_size), displs(world_size);
-    if (world_rank == 0) {
+    if (world_rank == 0)
+    {
         allSongs.resize(totalSongs);
         for (int i = 0; i < world_size; ++i) {
             recvCounts[i] = sendCounts[i];

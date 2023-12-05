@@ -10,7 +10,7 @@
 
 /**
  * Perform k-means clustering
- * @param points - pointer to vector of points
+ * @param songs - pointer to vector of songs
  * @param epochs - number of k means iterations
  * @param k - the number of initial centroids
  */
