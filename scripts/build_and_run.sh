@@ -71,8 +71,7 @@ openmp_implementation() {
 }
 
 cuda_implementation() {
-    echo "Compiling serial program..."
-    
+    echo "Compiling cuda program..."
     if [ -n "$TESTING" ]; then
         nvcc -DTESTING -o cuda src/cuda.cu
     else
@@ -116,6 +115,24 @@ mpi_implementation() {
     rm mpi
 }
 
+cuda_mpi_implementation() {
+    echo "Compiling cuda/mpi program..."
+    mpic++ -std=c++11 -c src/mpi_cuda_main.cpp -o mpi_cuda_main.o
+    nvcc -c src/mpi_cuda.cu -o mpi_cuda.o
+    mpic++ -std=c++11 -o mpi_cuda mpi_cuda_main.o mpi_cuda.o -lmpi -L/usr/local/cuda-12.2/lib64 -lcudart
+
+    echo "Running cuda/mpi program..."
+    read -p "Enter command line arguments (enter for none): " -a args
+    echo "Program Output:"
+    mpirun -n 4 mpi_cuda ${args[@]} 
+
+    echo "Program executed successfully"
+    echo "Cleaning up..."
+    rm mpi_cuda
+    rm mpi_cuda.o
+    rm mpi_cuda_main.o
+}
+
 # MAIN
 echo "Select an implementation to build:"
 echo "1. Serial"
@@ -137,6 +154,9 @@ case $choice in
         ;;
     4)
         mpi_implementation
+        ;;
+    5)
+        cuda_mpi_implementation
         ;;
     *)
         echo "Invalid choice"
