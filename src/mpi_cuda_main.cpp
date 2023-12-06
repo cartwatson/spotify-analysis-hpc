@@ -209,7 +209,7 @@ int main(int argc, char** argv) {
 
         // Transform rawData into a vector of Song structures
         for (double* features : rawData) {
-            allSongs.push_back(features[0], features[6], features[8]);
+            allSongs.push_back(Song(features[0], features[6], features[8]));
             delete[] features;
         }
     }
