@@ -61,61 +61,63 @@ __global__ void epochIter(float* songs, int* clusterAssignments, float* centroid
 
     __syncthreads();
 
-    // Find closest centroid
-    float* song = &s_songs[tid*FEATURES];
-    float minDist = sq_distance(song[0], song[1], song[2], s_centroids[0], s_centroids[1], s_centroids[2]);
-    int closestCentroid = 0;
-
+    // Find closest centroid for each song
+    double minDist = sq_distance(s_songs[tid*FEATURES], s_songs[tid*FEATURES+1], s_songs[tid*FEATURES+2],
+                                    s_centroids[0], s_centroids[1], s_centroids[2]);
+    int closestClust = 0;
     for (int i = 1; i < K; ++i)
     {
-        float dist = sq_distance(song[0], song[1], song[2], s_centroids[i*FEATURES], s_centroids[i*FEATURES+1], s_centroids[i*FEATURES+2]);
+        double dist = sq_distance(s_songs[tid*FEATURES], s_songs[tid*FEATURES+1], s_songs[tid*FEATURES+2],
+                                    s_centroids[i*FEATURES], s_centroids[i*FEATURES+1], s_centroids[i*FEATURES+2]);
         if (dist < minDist)
         {
             minDist = dist;
-            closestCentroid = i;
+            closestClust = i;
         }
     }
+    s_clusterAssignments[tid] = closestClust;
 
-    // Assign song to closest centroid
-    s_clusterAssignments[tid] = closestCentroid;
-    atomicAdd(&s_clusterCounts[closestCentroid], 1);
+    __syncthreads();
+
+    // Update cluster counts
+    atomicAdd(&s_clusterCounts[s_clusterAssignments[tid]], 1);
 
     __syncthreads();
 
     // Update centroids
     if (tid < K)
     {
-        float* centroid = &s_centroids[tid*FEATURES];
         int count = s_clusterCounts[tid];
         if (count > 0)
         {
-            // reset centroid
-            centroid[0] = 0;
-            centroid[1] = 0;
-            centroid[2] = 0;
+            float newCentroid[FEATURES] = {0};
             for (int i = 0; i < BLOCKSIZE; ++i)
             {
                 if (s_clusterAssignments[i] == tid)
                 {
-                    centroid[0] += s_songs[i*FEATURES];
-                    centroid[1] += s_songs[i*FEATURES+1];
-                    centroid[2] += s_songs[i*FEATURES+2];
+                    newCentroid[0] += s_songs[i*FEATURES];
+                    newCentroid[1] += s_songs[i*FEATURES+1];
+                    newCentroid[2] += s_songs[i*FEATURES+2];
                 }
             }
-            centroid[0] /= count;
-            centroid[1] /= count;
-            centroid[2] /= count;
+            s_centroids[tid*FEATURES] = newCentroid[0] / count;
+            s_centroids[tid*FEATURES+1] = newCentroid[1] / count;
+            s_centroids[tid*FEATURES+2] = newCentroid[2] / count;
         }
-
-        // Update global centroids
-        centroids[tid*FEATURES] = centroid[0];
-        centroids[tid*FEATURES+1] = centroid[1];
-        centroids[tid*FEATURES+2] = centroid[2];
-        clusterCounts[tid] = count;
     }
 
-    // Update global cluster assignments
-    clusterAssignments[gid] = s_clusterAssignments[tid];
+    __syncthreads();
+
+    // Write back to global memory
+    if (tid < K)
+    {
+        centroids[tid*FEATURES] = s_centroids[tid*FEATURES];
+        centroids[tid*FEATURES+1] = s_centroids[tid*FEATURES+1];
+        centroids[tid*FEATURES+2] = s_centroids[tid*FEATURES+2];
+        clusterCounts[tid] = s_clusterCounts[tid];
+    }
+    if (tid < BLOCKSIZE)
+        clusterAssignments[gid] = s_clusterAssignments[tid];
 }
 
 void kMeansCUDA(float* songs_h, int n)
