@@ -35,6 +35,8 @@
 
 ## Notes
 
+- in order to run openmpi on CHPC you will need to run `module load openmpi`
+- in order to run cuda on CHPC you will need to run `module load nvhpc`
 - all builds can be executed with the argument `[numLines]` which is the number of lines to read from `tracks_features.csv`
   - Keep `numLines` empty to read all lines 
   - This is primarily used for quick debugging
