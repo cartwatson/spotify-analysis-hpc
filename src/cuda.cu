@@ -115,16 +115,6 @@ inline cudaError_t checkCuda(cudaError_t result)
     return result;
 }
 
-#define cudaErrorCheck(call) \
-do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        fprintf(stderr, "CUDA Error in file '%s' in line %i : %s.\n", \
-                __FILE__, __LINE__, cudaGetErrorString(err)); \
-        exit(EXIT_FAILURE); \
-    } \
-} while (0)
-
 void kMeansCUDA(Song* songs, int n)
 {
     Song* songs_d;
@@ -154,7 +144,7 @@ void kMeansCUDA(Song* songs, int n)
     for (int epoch = 0; epoch < EPOCHS; ++epoch)
     {
         epochIter<<<gridDim, blockDim, centroids_size>>>(songs_d, centroids_d, n);
-        cudaErrorCheck(cudaGetLastError());
+        checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
     }
     checkCuda(cudaMemcpy(songs, songs_d, n*sizeof(Song), cudaMemcpyDeviceToHost));
