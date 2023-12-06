@@ -146,14 +146,6 @@ int main(int argc, char** argv)
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-    int maxLines = 250000;
-    if (argc > 1)
-    {
-        maxLines = std::stoi(argv[1]);
-        if (maxLines < 0 || maxLines > MAX_LINES)
-            maxLines = MAX_LINES;
-    }
-
     auto start = std::chrono::high_resolution_clock::now();
     int totalSongs = 0;
 
@@ -163,6 +155,14 @@ int main(int argc, char** argv)
 
     if (world_rank == 0)
     {
+        int maxLines = 250000;
+        if (argc > 1)
+        {
+            maxLines = std::stoi(argv[1]);
+            if (maxLines < 0 || maxLines > MAX_LINES)
+                maxLines = MAX_LINES;
+        }
+
         std::cout << "maxLines = " << maxLines << std::endl;
         // Parse CSV and fill allSongs
         std::vector<double*> data = parseCSV(maxLines);
@@ -173,7 +173,6 @@ int main(int argc, char** argv)
             allSongs.push_back(song);
         }
         totalSongs = allSongs.size();
-
         int songsPerProcess = totalSongs / world_size;
         int remaining = totalSongs % world_size;
 
@@ -184,6 +183,7 @@ int main(int argc, char** argv)
             displacements[i] = (i == 0 ? 0 : displacements[i - 1] + sendCounts[i - 1]);
         }
     }
+    auto endParse = std::chrono::high_resolution_clock::now();
 
     std::vector<std::string> featureNames = {"danceability", "acousticness", "liveness"};
 
@@ -203,9 +203,9 @@ int main(int argc, char** argv)
     MPI_Scatterv(allSongs.data(), sendCounts.data(), displacements.data(), MPI_Song, 
              localSongs.data(), sendCounts[world_rank], MPI_Song, 0, MPI_COMM_WORLD);
 
-    auto endParse = std::chrono::high_resolution_clock::now();
+    
     std::chrono::duration<double> duration = endParse - start;
-    std::cout << "Process " << world_rank << ": Parsed and distributed data in " << duration.count() << " seconds, received " << localSongs.size() << " songs.\n";
+    std::cout << "Process " << world_rank << ": Parsed data in " << duration.count() << " seconds, received " << localSongs.size() << " songs.\n";
 
     kMeansDistributed(localSongs, 100, 4, world_size, world_rank);
 
@@ -218,9 +218,6 @@ int main(int argc, char** argv)
             recvCounts[i] = sendCounts[i];
             displs[i] = (i == 0 ? 0 : displs[i - 1] + recvCounts[i - 1]);
         }
-        auto endkMeans = std::chrono::high_resolution_clock::now();
-        duration = endkMeans - endParse;
-        std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
     }
 
     // Gather the updated songs with correct cluster assignments
@@ -231,6 +228,9 @@ int main(int argc, char** argv)
 
     if (world_rank == 0)
     {
+        auto endkMeans = std::chrono::high_resolution_clock::now();
+        duration = endkMeans - endParse;
+        std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
         std::cout << "Writing output to file..." << std::endl;
         std::string header = featureNames[0] + "," + featureNames[1] + "," + featureNames[2] + ",cluster";
         std::vector<double*> data;

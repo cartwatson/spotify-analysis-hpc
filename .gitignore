@@ -45,3 +45,6 @@ venv
 
 # vscode
 .vscode
+
+serial.dSYM
+.DS_Store
