@@ -47,3 +47,4 @@ venv
 .vscode
 
 serial.dSYM
+.DS_Store
