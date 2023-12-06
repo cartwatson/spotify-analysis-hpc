@@ -13,6 +13,14 @@
 #define EPOCHS 2
 #define K 5
 
+inline cudaError_t checkCuda(cudaError_t result)
+{
+    if (result != cudaSuccess) {
+        std::cerr << "CUDA Runtime Error: " << cudaGetErrorString(result) << std::endl;
+        assert(result == cudaSuccess);
+    }
+    return result;
+}
 
 /**
  * Calculates the distance between two points in 3D space (no need to get the square root, it's all relative)
@@ -24,85 +32,113 @@ __device__ double sq_distance(float f1, float f2, float f3, float c1, float c2, 
            (f3 - c3) * (f3 - c3);
 }
 
-__global__ void epochIter(float* songs, float* centroids, int n)
+__global__ void epochIter(float* songs, int* clusterAssignments, float* centroids, int* clusterCounts, int n)
 {
-    __shared__ float s_centroids[K*(FEATURES+1)];
-    if (threadIdx.x < K*(FEATURES+1))
-        s_centroids[threadIdx.x] = centroids[threadIdx.x];
-    __syncthreads();
+    __shared__ float s_centroids[K*FEATURES];
+    __shared__ int s_clusterCounts[K];
+
+    __shared__ float s_songs[BLOCKSIZE*FEATURES];
+    __shared__ int s_clusterAssignments[BLOCKSIZE];
 
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if (gid >= n) return;
-    
-    float* song = &songs[gid*(FEATURES+1)]; // Get pointer to this thread's song
-    float minDist = sq_distance(song[0], song[1], song[2], s_centroids[0], s_centroids[1], s_centroids[2]); // Initialize to the distance to first centroid
-    int closestCluster = 0; // centroid 0 is closest by default at this point
-    for (int c = 1; c < K; ++c)
+
+    // Load centroids into shared memory
+    int tid = threadIdx.x;
+    if (tid < K)
     {
-        float dist = sq_distance(
-            song[0], song[1], song[2],
-            s_centroids[c*(FEATURES+1)], s_centroids[c*(FEATURES+1)+1], s_centroids[c*(FEATURES+1)+2]
-        );
+        s_centroids[tid*FEATURES] = centroids[tid*FEATURES];
+        s_centroids[tid*FEATURES+1] = centroids[tid*FEATURES+1];
+        s_centroids[tid*FEATURES+2] = centroids[tid*FEATURES+2];
+        s_clusterCounts[tid] = 0;
+    }
+
+    // Load songs into shared memory
+    s_songs[tid*FEATURES] = songs[gid*FEATURES];
+    s_songs[tid*FEATURES+1] = songs[gid*FEATURES+1];
+    s_songs[tid*FEATURES+2] = songs[gid*FEATURES+2];
+    s_clusterAssignments[tid] = -1;
+
+    __syncthreads();
+
+    // Find closest centroid for each song
+    double minDist = sq_distance(s_songs[tid*FEATURES], s_songs[tid*FEATURES+1], s_songs[tid*FEATURES+2],
+                                    s_centroids[0], s_centroids[1], s_centroids[2]);
+    int closestClust = 0;
+    for (int i = 1; i < K; ++i)
+    {
+        double dist = sq_distance(s_songs[tid*FEATURES], s_songs[tid*FEATURES+1], s_songs[tid*FEATURES+2],
+                                    s_centroids[i*FEATURES], s_centroids[i*FEATURES+1], s_centroids[i*FEATURES+2]);
         if (dist < minDist)
         {
             minDist = dist;
-            closestCluster = c;
+            closestClust = i;
         }
     }
-    song[3] = closestCluster;
+    s_clusterAssignments[tid] = closestClust;
 
     __syncthreads();
 
-    //reset centroids
-    if (threadIdx.x < K*(FEATURES+1))
-        s_centroids[threadIdx.x] = 0;
-    
-    __syncthreads();
-
-    //calculate new centroids
-    atomicAdd(&s_centroids[closestCluster*(FEATURES+1)], song[0]);
-    atomicAdd(&s_centroids[closestCluster*(FEATURES+1)+1], song[1]);
-    atomicAdd(&s_centroids[closestCluster*(FEATURES+1)+2], song[2]);
-    atomicAdd(&s_centroids[closestCluster*(FEATURES+1)+3], 1);
+    // Update cluster counts
+    atomicAdd(&s_clusterCounts[s_clusterAssignments[tid]], 1);
 
     __syncthreads();
 
-    //update centroids
-    if (threadIdx.x < K)
+    // Update centroids
+    if (tid < K)
     {
-        centroids[threadIdx.x*(FEATURES+1)] = s_centroids[threadIdx.x*(FEATURES+1)] / s_centroids[threadIdx.x*(FEATURES+1)+3];
-        centroids[threadIdx.x*(FEATURES+1)+1] = s_centroids[threadIdx.x*(FEATURES+1)+1] / s_centroids[threadIdx.x*(FEATURES+1)+3];
-        centroids[threadIdx.x*(FEATURES+1)+2] = s_centroids[threadIdx.x*(FEATURES+1)+2] / s_centroids[threadIdx.x*(FEATURES+1)+3];
-        centroids[threadIdx.x*(FEATURES+1)+3] = 0;
+        int count = s_clusterCounts[tid];
+        if (count > 0)
+        {
+            float newCentroid[FEATURES] = {0};
+            for (int i = 0; i < BLOCKSIZE; ++i)
+            {
+                if (s_clusterAssignments[i] == tid)
+                {
+                    newCentroid[0] += s_songs[i*FEATURES];
+                    newCentroid[1] += s_songs[i*FEATURES+1];
+                    newCentroid[2] += s_songs[i*FEATURES+2];
+                }
+            }
+            s_centroids[tid*FEATURES] = newCentroid[0] / count;
+            s_centroids[tid*FEATURES+1] = newCentroid[1] / count;
+            s_centroids[tid*FEATURES+2] = newCentroid[2] / count;
+        }
     }
-}
 
-inline cudaError_t checkCuda(cudaError_t result)
-{
-    if (result != cudaSuccess) {
-        std::cerr << "CUDA Runtime Error: " << cudaGetErrorString(result) << std::endl;
-        assert(result == cudaSuccess);
+    __syncthreads();
+
+    // Write back to global memory
+    if (tid < K)
+    {
+        centroids[tid*FEATURES] = s_centroids[tid*FEATURES];
+        centroids[tid*FEATURES+1] = s_centroids[tid*FEATURES+1];
+        centroids[tid*FEATURES+2] = s_centroids[tid*FEATURES+2];
+        clusterCounts[tid] = s_clusterCounts[tid];
     }
-    return result;
+    if (tid < BLOCKSIZE)
+        clusterAssignments[gid] = s_clusterAssignments[tid];
 }
 
 void kMeansCUDA(float* songs_h, int n)
 {
-    int songSize = (FEATURES+1)*sizeof(float); // Song/centroid size in bytes
-    int allSongsSize = n*songSize;
+    int allSongsSize = n*FEATURES*sizeof(float); // Song list size in bytes
+    int allCentroidsSize = K*FEATURES*sizeof(float); // Centroid list size in bytes
+
+    // Initialize songs on device
     float* songs_d;
     checkCuda(cudaMalloc(&songs_d, allSongsSize));
     checkCuda(cudaMemcpy(songs_d, songs_h, allSongsSize, cudaMemcpyHostToDevice));
 
     std::mt19937 rng(123);
-    float centroids[K*(FEATURES+1)]; // +1 to leave room for cluster size
+    float centroids[K*FEATURES];
     for (int i = 0; i < K; ++i)
     {
         int randIdx = rng() % n;
-        memcpy(&centroids[i*(FEATURES+1)], &songs_h[randIdx*(FEATURES+1)], songSize);
-        centroids[i*(FEATURES+1)+3] = 0; // Initialize cluster size to 0
+        memcpy(&centroids[i*FEATURES], &songs_h[randIdx*FEATURES], FEATURES*sizeof(float));
     }
-    int allCentroidsSize = K*songSize;
+
+    // Initialize centroids on device
     float* centroids_d;
     checkCuda(cudaMalloc(&centroids_d, allCentroidsSize));
     checkCuda(cudaMemcpy(centroids_d, centroids, allCentroidsSize, cudaMemcpyHostToDevice));
@@ -111,9 +147,18 @@ void kMeansCUDA(float* songs_h, int n)
     dim3 gridDim(nBlocks, 1, 1);
     dim3 blockDim(BLOCKSIZE, 1, 1);
 
+    // initialize all cluster counts to 0 and cluster assignments to -1
+    int* clusterAssignments = new int[n];
+    for (int i = 0; i < n; ++i)
+        clusterAssignments[i] = -1;
+
+    int clusterCounts[K];
+    for (int i = 0; i < K; ++i)
+        clusterCounts[i] = 0;
+
     for (int epoch = 0; epoch < EPOCHS; ++epoch)
     {
-        epochIter<<<gridDim, blockDim>>>(songs_d, centroids_d, n);
+        epochIter<<<gridDim, blockDim>>>(songs_d, clusterAssignments, centroids_d, clusterCounts, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
     }
@@ -137,13 +182,12 @@ int main(int argc, char* argv[])
     std::vector<double*> allData = parseCSV(maxLines);
     std::vector<std::string> featureNames = {"danceability", "acousticness", "liveness"};
 
-    float* songs = new float[allData.size()*(FEATURES+1)]; // +1 to leave room for cluster
+    float* songs = new float[allData.size()*FEATURES]; // +1 to leave room for cluster
     for (size_t i = 0; i < allData.size(); ++i)
     {
-        songs[i*(FEATURES+1)] = allData[i][0];
-        songs[i*(FEATURES+1)+1] = allData[i][6];
-        songs[i*(FEATURES+1)+2] = allData[i][8];
-        songs[i*(FEATURES+1)+3] = -1; // Initialize cluster to -1
+        songs[i*FEATURES] = allData[i][0];
+        songs[i*FEATURES+1] = allData[i][6];
+        songs[i*FEATURES+2] = allData[i][8];
     }
 
     auto endParse = std::chrono::high_resolution_clock::now();
@@ -165,10 +209,10 @@ int main(int argc, char* argv[])
     for (size_t i = 0; i < allData.size(); ++i)
     {
         double* row = new double[4];
-        row[0] = songs[i*(FEATURES+1)];
-        row[1] = songs[i*(FEATURES+1)+1];
-        row[2] = songs[i*(FEATURES+1)+2];
-        row[3] = songs[i*(FEATURES+1)+3];
+        row[0] = songs[i*FEATURES];
+        row[1] = songs[i*FEATURES+1];
+        row[2] = songs[i*FEATURES+2];
+        row[3] = songs[i*FEATURES+3];
         output.push_back(row);
     }
 
