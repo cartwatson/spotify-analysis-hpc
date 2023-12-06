@@ -31,7 +31,7 @@ struct Centroid {
     float feature1, feature2, feature3;
     int cluster_size;
 
-    Centroid(): feature1(0.0), feature2(0.0), feature3(0.0), cluster_size(0) {}
+    __host__ __device__ Centroid(): feature1(0.0), feature2(0.0), feature3(0.0), cluster_size(0) {}
 
     Centroid(float f1, float f2, float f3):
         feature1(f1),
@@ -51,64 +51,77 @@ __device__ double sq_distance(Song* s1, Centroid* c)
            (s1->feature3 - c->feature3) * (s1->feature3 - c->feature3);
 }
 
-__global__ void epochIter(Song* songs, Centroid* centroids, int n)
+/**
+ * Assigns each song to the cluster with the closest centroid using shared memory
+*/
+__global__ void assignSongToCluster(Song* songs, Centroid* centroids, int n)
 {
     extern __shared__ Centroid shared_centroids[];
     if (threadIdx.x < K)
         shared_centroids[threadIdx.x] = centroids[threadIdx.x];
     __syncthreads();
 
-    // Assign each song to the cluster with the closest centroid
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (gid >= n) return;
-
-    double minDist = sq_distance(&songs[gid], &shared_centroids[0]);
-    int closestClust = 0;
-    for (int c = 0; c < K; ++c)
+    if (gid < n)
     {
-        double newDist = sq_distance(&songs[gid], &shared_centroids[c]);
-        if (newDist < minDist)
+        double minDist = sq_distance(&songs[gid], &shared_centroids[0]);
+        int cluster = 0;
+        for (int c = 0; c < K; ++c)
         {
-            minDist = newDist;
-            closestClust = c;
+            double newDist = sq_distance(&songs[gid], &shared_centroids[c]);
+            if (newDist < minDist)
+            {
+                minDist = newDist;
+                cluster = c;
+            }
+        }
+        songs[gid].cluster = cluster;
+    }
+}
+
+__global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n)
+{
+    extern __shared__ Centroid shared_centroids[];
+    int cluster = threadIdx.x;
+    shared_centroids[cluster] = Centroid(0.0, 0.0, 0.0);
+
+    __syncthreads();
+
+    int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (gid < n)
+    {
+        int song_cluster = songs[gid].cluster;
+        if (song_cluster == cluster)
+        {
+            // Accumulate features and cluster size for each song in the block
+            shared_centroids[cluster].feature1 += songs[gid].feature1;
+            shared_centroids[cluster].feature2 += songs[gid].feature2;
+            shared_centroids[cluster].feature3 += songs[gid].feature3;
+            shared_centroids[cluster].cluster_size++;
         }
     }
-    songs[gid].cluster = closestClust;
 
     __syncthreads();
 
-    // Update the centroids
-    if (threadIdx.x < K)
+    for (int stride = blockDim.x / 2; stride > 0; stride>>=1)
     {
-        shared_centroids[threadIdx.x].feature1 = 0.0;
-        shared_centroids[threadIdx.x].feature2 = 0.0;
-        shared_centroids[threadIdx.x].feature3 = 0.0;
-        shared_centroids[threadIdx.x].cluster_size = 0;
+        if (threadIdx.x < stride)
+        {
+            shared_centroids[cluster].feature1 += shared_centroids[cluster + stride].feature1;
+            shared_centroids[cluster].feature2 += shared_centroids[cluster + stride].feature2;
+            shared_centroids[cluster].feature3 += shared_centroids[cluster + stride].feature3;
+            shared_centroids[cluster].cluster_size += shared_centroids[cluster + stride].cluster_size;
+        }
+        __syncthreads();
     }
-    __syncthreads();
 
-    // Calculate the new centroids by averaging the songs in each cluster
-    for (int i = threadIdx.x; i < n; i += blockDim.x)
+    if (threadIdx.x == 0)
     {
-        int cluster = songs[i].cluster;
-        atomicAdd(&shared_centroids[cluster].feature1, songs[i].feature1);
-        atomicAdd(&shared_centroids[cluster].feature2, songs[i].feature2);
-        atomicAdd(&shared_centroids[cluster].feature3, songs[i].feature3);
-        atomicAdd(&shared_centroids[cluster].cluster_size, 1);
+        atomicAdd(&centroids[cluster].feature1, shared_centroids[cluster].feature1);
+        atomicAdd(&centroids[cluster].feature2, shared_centroids[cluster].feature2);
+        atomicAdd(&centroids[cluster].feature3, shared_centroids[cluster].feature3);
+        atomicAdd(&centroids[cluster].cluster_size, shared_centroids[cluster].cluster_size);
     }
-    __syncthreads();
-
-    if (threadIdx.x < K)
-    {
-        shared_centroids[threadIdx.x].feature1 /= shared_centroids[threadIdx.x].cluster_size;
-        shared_centroids[threadIdx.x].feature2 /= shared_centroids[threadIdx.x].cluster_size;
-        shared_centroids[threadIdx.x].feature3 /= shared_centroids[threadIdx.x].cluster_size;
-    }
-    __syncthreads();
-
-    // Copy the new centroids back to global memory
-    if (threadIdx.x < K)
-        centroids[threadIdx.x] = shared_centroids[threadIdx.x];
 }
 
 inline cudaError_t checkCuda(cudaError_t result)
@@ -148,9 +161,22 @@ void kMeansCUDA(Song* songs, int n)
 
     for (int epoch = 0; epoch < EPOCHS; ++epoch)
     {
-        epochIter<<<gridDim, blockDim, centroids_size>>>(songs_d, centroids_d, n);
+        assignSongToCluster<<<gridDim, blockDim, centroids_size>>>(songs_d, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
+
+        calculateNewCentroids<<<gridDim, blockDim, centroids_size>>>(songs_d, centroids_d, n);
+        checkCuda(cudaGetLastError());
+        checkCuda(cudaDeviceSynchronize());
+
+        checkCuda(cudaMemcpy(centroids, centroids_d, centroids_size, cudaMemcpyDeviceToHost));
+        for (int i = 0; i < K; ++i)
+        {
+            centroids[i].feature1 /= centroids[i].cluster_size;
+            centroids[i].feature2 /= centroids[i].cluster_size;
+            centroids[i].feature3 /= centroids[i].cluster_size;
+        }
+        checkCuda(cudaMemcpy(centroids_d, centroids, centroids_size, cudaMemcpyHostToDevice));
     }
     checkCuda(cudaMemcpy(songs, songs_d, n*sizeof(Song), cudaMemcpyDeviceToHost));
 }
