@@ -26,7 +26,7 @@ The implementation of the K-Means Cluster Algorithm is exactly as one would expe
 
 To sum it up, Cuda allows for faster parallelization due to it allowing us to run an implementation of the K-Means Cluster Algorithm on the GPU instead of the CPU.
 
-## 4. Parallel Distributed Memory CPU - [`MPI Implementation`](/src/mpi.cpp)
+## 4. Distributed Memory CPU - [`MPI Implementation`](/src/mpi.cpp)
 
 The implementation for MPI sticks to the core of what we've built with the serial implementation with a few major tweaks in the driver section and some minor changes in the in the implementation of the algorithm to better leverage parallel processing with distributed memory.
 
@@ -34,6 +34,6 @@ The changes in the driver function are primarily to setup the MPI parallel envir
 
 Ultimately, we retained the core methodology of our serial K-Means algorithm while introducing significant modifications in the driver function and minor optimizations in the algorithm for efficient distributed memory parallel processing on the CPU.
 
-## 5. Parallel Distributed Memory GPU - [`Cuda & MPI Implementation`](/src/)
+## 5. Distributed Memory GPU - [`Cuda & MPI Implementation`](/src/)
 
 TODO: implement
