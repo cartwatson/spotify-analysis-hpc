@@ -45,3 +45,5 @@ venv
 
 # vscode
 .vscode
+
+serial.dSYM
