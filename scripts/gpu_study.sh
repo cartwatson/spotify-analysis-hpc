@@ -54,6 +54,24 @@ done
 
 echo "GPU scaling study completed. Results saved in $LOG_DIR"
 
+# Creating and activating a Python virtual environment
+echo "Setting up Python virtual environment..."
+python3 -m venv venv
+source venv/bin/activate
+
+# Installing Matplotlib
+echo "Installing Matplotlib..."
+pip install matplotlib pandas
+
+# Running the Python script
+echo "Running the Python script to generate graphs..."
+python src/python/gpuStudyGraph.py
+
+# Deactivate the virtual environment
+deactivate
+
+echo "Graph generation complete."
+
 # Cleaning up
 echo "Cleaning up..."
 rm cuda mpi_cuda mpi_cuda.o mpi_cuda_main.o
