@@ -138,8 +138,8 @@ int main(int argc, char* argv[])
     for (size_t i = 0; i < allData.size(); ++i)
     {
         songs[i*(FEATURES+1)] = allData[i][0];
-        songs[i*(FEATURES+1)+1] = allData[i][6];
-        songs[i*(FEATURES+1)+2] = allData[i][8];
+        songs[i*(FEATURES+1)+1] = allData[i][1];
+        songs[i*(FEATURES+1)+2] = allData[i][2];
         songs[i*(FEATURES+1)+3] = -1; // Initialize cluster to -1
     }
 
