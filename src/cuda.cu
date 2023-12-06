@@ -76,7 +76,7 @@ __global__ void assignSongToCluster(Song* songs, Centroid* centroids, int n)
     {
         double minDist = sq_distance(&songs[gid], &shared_centroids[0]);
         int cluster = 0;
-        for (int c = 0; c < K; ++c)
+        for (int c = 1; c < K; ++c)
         {
             double newDist = sq_distance(&songs[gid], &shared_centroids[c]);
             if (newDist < minDist)

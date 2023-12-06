@@ -68,11 +68,11 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
             double minDist = __DBL_MAX__;  // Initialize minimum distance to the maximum possible double value
             int closestCluster = -1;  // Initialize the closest cluster index to -1 (no cluster)
 
-            for (Song& centroid : centroids) {  // Iterates over each centroid
-                double dist = centroid.distance(song);  // Calculate the distance from the current centroid to the song
+            for (Song& c : centroids) {  // Iterates over each centroid
+                double dist = c.distance(song);  // Calculate the distance from the current centroid to the song
                 if (dist < minDist) {  // Check if this distance is less than the current minimum distance
                     minDist = dist;  // Update the minimum distance
-                    closestCluster = centroid.cluster;  // Update the closest cluster to the current centroid's cluster
+                    closestCluster = c.cluster;  // Update the closest cluster to the current centroid's cluster
                 }
             }
             song.cluster = closestCluster;  // Assign the song to the cluster of the closest centroid
