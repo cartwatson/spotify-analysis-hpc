@@ -83,7 +83,7 @@ __global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n)
 }
 
 // Wrapper function for assignSongToCluster kernel
-extern "C" void callAssignSongToCluster(Song * songs, Centroid * centroids, int n, int k) {
+extern "C" void callAssignSongToCluster(Song * songs, Centroid * centroids, int n, int k, int threads) {
     int threadsPerBlock = 256;
     int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock; 
 
@@ -102,7 +102,7 @@ extern "C" void callAssignSongToCluster(Song * songs, Centroid * centroids, int 
 }
 
 // Wrapper function for calculateNewCentroids kernel
-extern "C" void callCalculateNewCentroids(Song * songs, Centroid * centroids, int n) {
+extern "C" void callCalculateNewCentroids(Song * songs, Centroid * centroids, int n, int threads) {
     int threadsPerBlock = 256;
     int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
 

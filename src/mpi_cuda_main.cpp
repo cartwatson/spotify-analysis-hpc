@@ -9,6 +9,8 @@
 
 #include "util.cpp"
 
+int blockSize = 256;
+
 struct Song {
     float feature1, feature2, feature3;
     int cluster;
@@ -38,8 +40,8 @@ struct Centroid {
 };
 
 extern "C" {
-    void callAssignSongToCluster(Song* songs, Centroid* centroids, int n, int k);
-    void callCalculateNewCentroids(Song* songs, Centroid* centroids, int n);
+    void callAssignSongToCluster(Song* songs, Centroid* centroids, int n, int k, int threads);
+    void callCalculateNewCentroids(Song* songs, Centroid* centroids, int n, int threads);
     void allocateMemoryAndCopyToGPU(Song** deviceSongs, Centroid** deviceCentroids, const Song* hostSongs, const Centroid* hostCentroids, int numSongs, int numCentroids);
     void freeGPUMemory(Song* deviceSongs, Centroid* deviceCentroids);
     void gpuErrorCheck();
@@ -121,12 +123,12 @@ void kMeansCUDAMPI(Song* localSongs, int localN, int epochs, int k, int world_si
     allocateMemoryAndCopyToGPU(&localSongs_d, &centroids_d, localSongs, centroids, localN, k * sizeof(Centroid));
 
     for (int epoch = 0; epoch < epochs; ++epoch) {
-        callAssignSongToCluster(localSongs_d, centroids_d, localN, k);
+        callAssignSongToCluster(localSongs_d, centroids_d, localN, k, blockSize);
         gpuErrorCheck();
         
         resetCentroids(centroids_d, k);
 
-        callCalculateNewCentroids(localSongs_d, centroids_d, localN);
+        callCalculateNewCentroids(localSongs_d, centroids_d, localN, blockSize);
         gpuErrorCheck();
 
         copyCentroidsToHost(centroids, centroids_d, k);
@@ -206,7 +208,11 @@ int main(int argc, char** argv) {
             std::cout << "maxLines = " << maxLines << std::endl;
         }
         rawData = parseCSV(maxLines);  // This will hold raw feature data from the CSV
-
+        // Parse command-line arguments for maxLines and blockSize
+        if (argc > 2)
+        {
+            blockSize = std::stoi(argv[2]);
+        }
         // Transform rawData into a vector of Song structures
         for (double* features : rawData) {
             allSongs.push_back(Song(features[0], features[6], features[8]));

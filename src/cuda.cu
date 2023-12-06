@@ -8,9 +8,9 @@
 
 #include "util.cpp"
 
-#define BLOCKSIZE 256
 #define EPOCHS 100
 #define K 5
+int BLOCKSIZE = 256;
 
 
 struct Song {
@@ -155,13 +155,20 @@ void kMeansCUDA(Song* songs, int n)
 int main(int argc, char* argv[])
 {
     int maxLines = 250000;
+
+    // Parse command-line arguments for maxLines and blockSize
     if (argc > 1)
     {
         maxLines = std::stoi(argv[1]);
         if (maxLines < 0 || maxLines > MAX_LINES)
             maxLines = MAX_LINES;
-        std::cout << "maxLines = " << maxLines << std::endl;
     }
+    if (argc > 2)
+    {
+        blockSize = std::stoi(argv[2]);
+    }
+
+    std::cout << "maxLines = " << maxLines << ", blockSize = " << blockSize << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
     
