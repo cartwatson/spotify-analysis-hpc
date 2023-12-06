@@ -1,21 +1,19 @@
 # Meeting Notes
 
 Tasks
-- [ ] investigate new ways to feed in csv to c++
+- [X] investigate new ways to feed in csv to c++
   - without using header file
-- [ ] validation
+- [X] validation
   - may need fixing later depending on file similarities
-- [ ] visualisation
+- [x] visualization
   - matplotlib as a failsafe
     - may be an issue with number of points
   - [ ] investigate other libraries that utilize GPU
 - [ ] parallel implementations
-  - [ ] shared memory CPU
-  - [ ] shared memory GPU
-  - [ ] distributed memory CPU
-    - MPI
-  - [ ] distributed memory GPU
-    - cuda + MPI
+  - [X] shared memory CPU - OpenMP
+  - [X] shared memory GPU - Cuda
+  - [X] distributed memory CPU - MPI
+  - [ ] distributed memory GPU - cuda + MPI
 - [ ] scaling studies
   - [ ] 1 vs 2 vs 3
   - [ ] 4 vs 5
@@ -25,7 +23,7 @@ Tasks
 Assignments
 - Caden  - shared memory CPU & help with distributed memory CPU
 - Carter - investigate csv feeding to c++ & shared memory GPU
-- Jaxson - investigate visualisation libraries & distributed memory CPU 
+- Jaxson - investigate visualization libraries & distributed memory CPU 
 
 Due on NOV 22 2023
 
@@ -34,6 +32,6 @@ Due on NOV 22 2023
 Assignments  
 - Caden  - serial implementation
 - Carter - README & validation function
-- Jaxson - Vizualization & build.sh
+- Jaxson - Visualization & build.sh
 
 Due on NOV 08 2023
