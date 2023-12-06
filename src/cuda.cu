@@ -35,10 +35,6 @@ __device__ double sq_distance(float f1, float f2, float f3, float c1, float c2, 
 __global__ void songAssign(float* songs, int* clusterAssignments, float* centroids, int n)
 {
     __shared__ float s_centroids[K*FEATURES];
-    __shared__ int s_clusterCounts[K];
-
-    __shared__ float s_songs[BLOCKSIZE*FEATURES];
-    __shared__ int s_clusterAssignments[BLOCKSIZE];
 
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if (gid >= n) return;
@@ -50,25 +46,18 @@ __global__ void songAssign(float* songs, int* clusterAssignments, float* centroi
         s_centroids[tid*FEATURES] = centroids[tid*FEATURES];
         s_centroids[tid*FEATURES+1] = centroids[tid*FEATURES+1];
         s_centroids[tid*FEATURES+2] = centroids[tid*FEATURES+2];
-        s_clusterCounts[tid] = 0;
     }
-
-    // Load songs into shared memory
-    s_songs[tid*FEATURES] = songs[gid*FEATURES];
-    s_songs[tid*FEATURES+1] = songs[gid*FEATURES+1];
-    s_songs[tid*FEATURES+2] = songs[gid*FEATURES+2];
-    s_clusterAssignments[tid] = -1;
 
     __syncthreads();
 
     // Find closest centroid
-    float* song = &s_songs[tid*FEATURES];
-    float minDist = sq_distance(song[0], song[1], song[2], s_centroids[0], s_centroids[1], s_centroids[2]);
-    int closestCentroid = 0;
-
+    int closestCentroid = -1;
+    double minDist = sq_distance(songs[gid*FEATURES], songs[gid*FEATURES+1], songs[gid*FEATURES+2],
+                                 s_centroids[0], s_centroids[1], s_centroids[2]);
     for (int i = 1; i < K; ++i)
     {
-        float dist = sq_distance(song[0], song[1], song[2], s_centroids[i*FEATURES], s_centroids[i*FEATURES+1], s_centroids[i*FEATURES+2]);
+        double dist = sq_distance(songs[gid*FEATURES], songs[gid*FEATURES+1], songs[gid*FEATURES+2],
+                                  s_centroids[i*FEATURES], s_centroids[i*FEATURES+1], s_centroids[i*FEATURES+2]);
         if (dist < minDist)
         {
             minDist = dist;
@@ -76,11 +65,8 @@ __global__ void songAssign(float* songs, int* clusterAssignments, float* centroi
         }
     }
 
-    // Assign song to closest centroid
-    s_clusterAssignments[tid] = closestCentroid;
-
-    // Put cluster assignments back into global memory
-    clusterAssignments[gid] = s_clusterAssignments[tid];
+    // Update cluster assignment
+    clusterAssignments[gid] = closestCentroid;
 }
 
 void kMeansCUDA(float* songs_h, int n)
