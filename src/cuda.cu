@@ -155,6 +155,7 @@ void kMeansCUDA(Song* songs, int n)
 int main(int argc, char* argv[])
 {
     int maxLines = 250000;
+    int blockSize = 256;
 
     // Parse command-line arguments for maxLines and blockSize
     if (argc > 1)
