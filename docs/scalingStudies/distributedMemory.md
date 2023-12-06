@@ -14,12 +14,8 @@ Something here explaining what we're doing
 
 ## Results
 
-- 
-
-## Discussion
-
-- 
+![GPU Comparison for Execution Time vs Block Size](src/../../../src/data/kmeans_execution_time_vs_block_size.png)
 
 ## Conclusion
 
-- 
+Overall, we see that the CUDA implementation is the most efficient across all block sizes.  This is surprising to us as we assumed that the CUDA+MPI would be the most effective overall, but this wasn't the case.
