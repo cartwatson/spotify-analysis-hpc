@@ -32,7 +32,7 @@ __device__ double sq_distance(float f1, float f2, float f3, float c1, float c2, 
            (f3 - c3) * (f3 - c3);
 }
 
-__global__ void epochIter(float* songs, int* clusterAssignments, float* centroids, int* clusterCounts, int n)
+__global__ void epochIter(float* songs, int* clusterAssignments, float* centroids, int n)
 {
     __shared__ float s_centroids[K*FEATURES];
     __shared__ int s_clusterCounts[K];
@@ -101,9 +101,9 @@ __global__ void epochIter(float* songs, int* clusterAssignments, float* centroid
         int count = s_clusterCounts[tid];
         if (count > 0)
         {
-            s_centroids[tid*FEATURES] = sum1 / count;
-            s_centroids[tid*FEATURES+1] = sum2 / count;
-            s_centroids[tid*FEATURES+2] = sum3 / count;
+            atomicAdd(&centroids[tid*FEATURES], sum1 / count);
+            atomicAdd(&centroids[tid*FEATURES+1], sum2 / count);
+            atomicAdd(&centroids[tid*FEATURES+2], sum3 / count);
         }
     }
 }
@@ -140,13 +140,9 @@ void kMeansCUDA(float* songs_h, int n)
     for (int i = 0; i < n; ++i)
         clusterAssignments[i] = -1;
 
-    int clusterCounts[K];
-    for (int i = 0; i < K; ++i)
-        clusterCounts[i] = 0;
-
     for (int epoch = 0; epoch < EPOCHS; ++epoch)
     {
-        epochIter<<<gridDim, blockDim>>>(songs_d, clusterAssignments, centroids_d, clusterCounts, n);
+        epochIter<<<gridDim, blockDim>>>(songs_d, clusterAssignments, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
     }
