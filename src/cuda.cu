@@ -155,7 +155,7 @@ void kMeansCUDA(Song* songs, int n)
     {
         epochIter<<<gridDim, blockDim, centroids_size>>>(songs_d, centroids_d, n);
         cudaErrorCheck(cudaGetLastError());
-        cudaErrorCheck(cudaDeviceSynchronize());
+        checkCuda(cudaDeviceSynchronize());
     }
     checkCuda(cudaMemcpy(songs, songs_d, n*sizeof(Song), cudaMemcpyDeviceToHost));
 }
