@@ -50,6 +50,7 @@ extern "C" {
 }
 
 void distributeData(MPI_Datatype MPI_Song, std::vector<Song>& allSongs, std::vector<Song>& localSongs, int world_size, int world_rank) {
+
     int totalSongs;
     std::vector<int> sendCounts(world_size), displacements(world_size);
 
@@ -67,6 +68,8 @@ void distributeData(MPI_Datatype MPI_Song, std::vector<Song>& allSongs, std::vec
 
     // Broadcast the total number of songs to all processes
     MPI_Bcast(&totalSongs, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(sendCounts.data(), world_size, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(displacements.data(), world_size, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Each process prepares its localSongs vector
     int localSongCount = totalSongs / world_size + (world_rank < totalSongs % world_size ? 1 : 0);
