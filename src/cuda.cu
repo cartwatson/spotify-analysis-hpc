@@ -67,8 +67,11 @@ __global__ void epochIter(float* songs, float* centroids, int n)
 
     __syncthreads();
 
+    //update centroids
     if (threadIdx.x < K*(FEATURES+1))
-        atomicAdd(&centroids[threadIdx.x], s_centroids[threadIdx.x]);
+    {
+        centroids[threadIdx.x] = s_centroids[threadIdx.x] / s_centroids[threadIdx.x+3];
+    }
 }
 
 inline cudaError_t checkCuda(cudaError_t result)
@@ -110,16 +113,6 @@ void kMeansCUDA(float* songs_h, int n)
         epochIter<<<gridDim, blockDim>>>(songs_d, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
-
-        checkCuda(cudaMemcpy(centroids, centroids_d, allCentroidsSize, cudaMemcpyDeviceToHost));
-
-        // divide by cluster size to get average
-        for (int i = 0; i < K; i++)
-        {
-            centroids[i*(FEATURES+1)] /= centroids[i*(FEATURES+1)+3];
-            centroids[i*(FEATURES+1)+1] /= centroids[i*(FEATURES+1)+3];
-            centroids[i*(FEATURES+1)+2] /= centroids[i*(FEATURES+1)+3];
-        }
     }
     checkCuda(cudaMemcpy(songs_h, songs_d, allSongsSize, cudaMemcpyDeviceToHost));
 }
