@@ -36,7 +36,6 @@ void kMeansParallel(std::vector<Song>& songs, int epochs, int k) {
     for (int i = 0; i < epochs; ++i)
     {
         // For each centroid, compute distance from centroid to each point
-        // and update point's cluster if necessary
         # pragma omp parallel for
         for (Song& s : songs)
         {
@@ -100,6 +99,7 @@ int main(int argc, char** argv)
 
     auto start = std::chrono::high_resolution_clock::now();
     
+    // Get data from CSV
     std::vector<double*> data = parseCSV(maxLines);
     std::vector<Song> songs;
     std::vector<std::string> featureNames = {"danceability", "acousticness", "liveness"};
@@ -118,6 +118,7 @@ int main(int argc, char** argv)
     duration = endkMeans - endParse;
     std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
 
+    // Send data to CSV
     std::cout << "Writing output to file..." << std::endl;
     std::string header = featureNames[0] + "," + featureNames[1] + "," + featureNames[2] + ",cluster";
     data.clear();

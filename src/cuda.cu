@@ -89,6 +89,9 @@ __global__ void assignSongToCluster(Song* songs, Centroid* centroids, int n)
     }
 }
 
+/**
+ * Get the number of songs in each cluster
+*/
 __global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n)
 {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -105,6 +108,7 @@ __global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n)
 
 void kMeansCUDA(Song* songs, int n)
 {
+    // Init the songs on the device
     Song* songs_d;
     checkCuda(cudaMalloc(&songs_d, n * sizeof(Song)));
     checkCuda(cudaMemcpy(songs_d, songs, n * sizeof(Song), cudaMemcpyHostToDevice));
@@ -121,6 +125,7 @@ void kMeansCUDA(Song* songs, int n)
         int rand_idx = rng() % n;
         centroids[i] = Centroid(songs[rand_idx].feature1, songs[rand_idx].feature2, songs[rand_idx].feature3);
     }
+    // Init the centroids on the device
     long centroids_size = K*sizeof(Centroid);
     checkCuda(cudaMalloc(&centroids_d, centroids_size));
     checkCuda(cudaMemcpy(centroids_d, centroids, centroids_size, cudaMemcpyHostToDevice));
@@ -131,16 +136,19 @@ void kMeansCUDA(Song* songs, int n)
 
     for (int epoch = 0; epoch < EPOCHS; ++epoch)
     {
+        // assign each song to a cluster
         assignSongToCluster<<<gridDim, blockDim, centroids_size>>>(songs_d, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
 
+        // set all centroids to 0 to prepare for means
         checkCuda(cudaMemset(centroids_d, 0, centroids_size));
 
         calculateNewCentroids<<<gridDim, blockDim>>>(songs_d, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
 
+        // compute mean of all songs in cluster
         checkCuda(cudaMemcpy(centroids, centroids_d, centroids_size, cudaMemcpyDeviceToHost));
         for (int i = 0; i < K; ++i)
         {

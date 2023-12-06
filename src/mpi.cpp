@@ -64,31 +64,30 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
     for (int epoch = 0; epoch < epochs; ++epoch)
     {
         // Assign points to the nearest centroid
-        for (Song& song : songs) {  // Iterates over each song in the dataset
-            double minDist = __DBL_MAX__;  // Initialize minimum distance to the maximum possible double value
-            int closestCluster = -1;  // Initialize the closest cluster index to -1 (no cluster)
+        for (Song& song : songs) {
+            double minDist = __DBL_MAX__;
+            int closestCluster = -1;
 
             for (Song& c : centroids) {  // Iterates over each centroid
-                double dist = c.distance(song);  // Calculate the distance from the current centroid to the song
-                if (dist < minDist) {  // Check if this distance is less than the current minimum distance
-                    minDist = dist;  // Update the minimum distance
-                    closestCluster = c.cluster;  // Update the closest cluster to the current centroid's cluster
+                double dist = c.distance(song);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestCluster = c.cluster;
                 }
             }
             song.cluster = closestCluster;  // Assign the song to the cluster of the closest centroid
         }
 
         // Calculate new centroids locally
-        std::vector<Song> newCentroids(k);  // Create a vector to store new centroids for each cluster
-        std::vector<int> counts(k, 0);  // Create a vector to count the number of songs in each cluster
+        std::vector<Song> newCentroids(k); 
+        std::vector<int> counts(k, 0);
 
         for (Song& song : songs) {  // Iterate over each song
-            //std::cout << "Cluster: " << song.cluster << std::endl;
-            newCentroids[song.cluster].feature1 += song.feature1;  // Sum danceability for the cluster
-            newCentroids[song.cluster].feature2 += song.feature2;  // Sum acousticness for the cluster
-            newCentroids[song.cluster].feature3 += song.feature3;  // Sum liveness for the cluster
+            newCentroids[song.cluster].feature1 += song.feature1;
+            newCentroids[song.cluster].feature2 += song.feature2;
+            newCentroids[song.cluster].feature3 += song.feature3;
             newCentroids[song.cluster].cluster = song.cluster;
-            counts[song.cluster]++;  // Increment the count of songs in this cluster
+            counts[song.cluster]++;
         }
 
         // Check if the current process is the root process (usually process 0)
@@ -101,15 +100,15 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
                 allCentroids.data(), k, MPI_Song, 0, MPI_COMM_WORLD);
 
         // Aggregate centroids at the root and then broadcast them
-        if (world_rank == 0) // Check if this is the root process
+        if (world_rank == 0)
         {
             // Combine centroids from all processes
             for (int cluster = 0; cluster < k; cluster++) // Iterate over each centroid
             {
-                centroids[cluster].feature1 = 0;  // Reset danceability for centroid 'i'
-                centroids[cluster].feature2 = 0;  // Reset acousticness for centroid 'i'
-                centroids[cluster].feature3 = 0;  // Reset liveness for centroid 'i'
-                int totalCount = 0;  // Initialize a counter for the total number of songs in this centroid
+                centroids[cluster].feature1 = 0;
+                centroids[cluster].feature2 = 0;
+                centroids[cluster].feature3 = 0;
+                int totalCount = 0;
 
                 for (Song& centroid : allCentroids)
                 {
@@ -119,7 +118,6 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
                         centroids[cluster].feature2 += centroid.feature2;
                         centroids[cluster].feature3 += centroid.feature3;
                         totalCount += counts[cluster];
-                        //std::cout << "Total Count " << totalCount << std::endl;
                     }
                 }
 
@@ -133,7 +131,6 @@ void kMeansDistributed(std::vector<Song>& songs, int epochs, int k, int world_si
             }
         }
 
-        // Broadcast the updated centroids to all processes
         MPI_Bcast(centroids.data(), k, MPI_Song, 0, MPI_COMM_WORLD);
     }
 }

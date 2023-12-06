@@ -165,7 +165,6 @@ void kMeansCUDAMPI(Song* localSongs, int localN, int epochs, int k, int world_si
 }
 
 int main(int argc, char** argv) {
-    // Initialize MPI
     MPI_Init(&argc, &argv);
     int world_size, world_rank;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
