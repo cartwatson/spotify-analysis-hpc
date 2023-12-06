@@ -165,6 +165,8 @@ void kMeansCUDA(Song* songs, int n)
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
 
+        checkCuda(cudaMemset(centroids_d, 0, centroids_size));
+
         calculateNewCentroids<<<gridDim, blockDim, centroids_size>>>(songs_d, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
