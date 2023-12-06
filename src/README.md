@@ -11,6 +11,7 @@
 
 - **Compile:** `g++ -g -Wall -fopenmp -o omp src/omp.cpp`
 - **Execute:** `./omp [numLines]`
+- **NOTE:** This implementation will not run on the CHPC due to differing versions of OpenMP
 
 ## 3. Parallel Shared Memory GPU - Cuda
 
@@ -24,8 +25,13 @@
 
 ## 5. Distributed Memory GPU - Cuda & MPI
 
-- **Compile:** ``
-- **Execute:** ``
+- **Compile:**
+```bash
+    mpic++ -std=c++11 -c src/mpi_cuda_main.cpp -o mpi_cuda_main.o
+    nvcc -c src/mpi_cuda.cu -o mpi_cuda.o
+    mpic++ -std=c++11 -o mpi_cuda mpi_cuda_main.o mpi_cuda.o -lmpi -L/usr/local/cuda-12.2/lib64 -lcudart
+```
+- **Execute:** `mpirun -n 4 ./mpi_cuda [numLines]`
 
 ## Notes
 
