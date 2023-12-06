@@ -14,7 +14,7 @@ Something here explaining what we're doing
 
 ## Results
 
-![CPU Comparison for Execution Time vs Dataset Size](CPU-comparison.png)
+![CPU Comparison for Execution Time vs Dataset Size](src/../../../src/data/CPU-comparison.png)
 
 ## Conclusion
 
