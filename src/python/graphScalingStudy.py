@@ -4,9 +4,9 @@ import os
 print("Current Working Directory:", os.getcwd())
 
 # Load the data from CSV files
-serial_df = pd.read_csv('../../logs/serial_scaling_results.csv')
-omp_df = pd.read_csv('../../logs/omp_scaling_results.csv')
-mpi_df = pd.read_csv('../../logs/mpi_scaling_results.csv')
+serial_df = pd.read_csv('logs/serial_scaling_results.csv')
+omp_df = pd.read_csv('logs/omp_scaling_results.csv')
+mpi_df = pd.read_csv('logs/mpi_scaling_results.csv')
 
 # Plotting K-means Execution Time for all implementations
 plt.figure(figsize=(12, 6))
