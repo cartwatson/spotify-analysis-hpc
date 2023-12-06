@@ -68,7 +68,6 @@ void distributeData(MPI_Datatype MPI_Song, std::vector<Song>& allSongs, std::vec
         }
     }
 
-    // Broadcast the total number of songs to all processes
     MPI_Bcast(&totalSongs, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(sendCounts.data(), world_size, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(displacements.data(), world_size, MPI_INT, 0, MPI_COMM_WORLD);
@@ -137,7 +136,6 @@ void kMeansCUDAMPI(Song* localSongs, int localN, int epochs, int k, int world_si
             allCentroids.data(), k * sizeof(Centroid), MPI_BYTE, 0, MPI_COMM_WORLD);
 
         if (world_rank == 0) {
-            // Combine centroids from all processes (only at the root process)
             for (int i = 0; i < k; ++i) {
                 float sumFeature1 = 0.0, sumFeature2 = 0.0, sumFeature3 = 0.0;
                 int totalSize = 0;
@@ -151,7 +149,6 @@ void kMeansCUDAMPI(Song* localSongs, int localN, int epochs, int k, int world_si
                     totalSize += allCentroids[idx].cluster_size;
                 }
 
-                // Calculate the average for each feature of the centroid
                 if (totalSize > 0) {
                     centroids[i].feature1 = sumFeature1 / totalSize;
                     centroids[i].feature2 = sumFeature2 / totalSize;
@@ -160,26 +157,16 @@ void kMeansCUDAMPI(Song* localSongs, int localN, int epochs, int k, int world_si
             }
         }
 
-
-        // Broadcast the updated centroids to all processes
         MPI_Bcast(centroids, k * sizeof(Centroid), MPI_BYTE, 0, MPI_COMM_WORLD);
-
-        // Copy updated centroids back to device for next iteration
         copyCentroidsToDevice(centroids_d, centroids, k);
     }
 
-    // Copy final results back to host
     copySongsToHost(localSongs, localSongs_d, localN);
-
-    // Free GPU memory
     freeGPUMemory(localSongs_d, centroids_d);
-
-    // Clean up
     delete[] centroids;
 }
 
 int main(int argc, char** argv) {
-    // Initialize MPI
     MPI_Init(&argc, &argv);
     int world_size, world_rank;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
