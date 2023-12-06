@@ -36,4 +36,8 @@ Ultimately, we retained the core methodology of our serial K-Means algorithm whi
 
 ## 5. Distributed Memory GPU - [`Cuda & MPI Implementation`](/src/)
 
-TODO: implement
+The approach for this last implementation is by far the most complex in it's details, but still it retains the simple overall structure of the K-Means Algorithm that we have already established.  The driver code remains mostly unchanges with no real differences in file I/O.
+
+The main changes come from integrating the MPI and Cuda code together.  Even then most of the code is reused from the MPI and Cuda implementations earlier.
+
+While this is the most complex implementation most of the complexity comes from getting pre-established functions and ideas to work nicely with each other.

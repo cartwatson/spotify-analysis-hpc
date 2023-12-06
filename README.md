@@ -23,13 +23,14 @@ This project aims to implement a parallel K-Means clustering algorithm to catego
 *All files should be run from the root directory*
 
 - Use `scripts/build_and_run.sh` to build and run your desired implementation
+  - To manually build and run implementations you can find instructions at [`src/README.md`](src/README.md)
 - Use `scripts/validation.sh` to validate parallel implementations produce the same results as the serial implementation
 - Use `scripts/visualize.sh` to visualize results of your most recently run implementation
   1. to run this on wsl (Ubuntu 20.04) run the following commands `sudo apt install x11-apps libxcb-* libxkb*`
-  1. then in PowerShell run `wsl --update`, `wsl --shutdown`
-  1. back in wsl `pip uninstall pyqt5 pyqt5-qt5 pyqt5-sip`
-  1. if on an AMD cpu `pip install pyqt6`
-  1. if on an Intel cpu `pip install glfw`
+  2. then in PowerShell run `wsl --update`, `wsl --shutdown`
+  3. back in wsl `pip uninstall pyqt5 pyqt5-qt5 pyqt5-sip`
+  4. if on an AMD cpu `pip install pyqt6`
+  5. if on an Intel cpu `pip install glfw`
 
 ## Contributors
 
