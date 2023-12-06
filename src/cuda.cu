@@ -85,27 +85,37 @@ __global__ void epochIter(float* songs, int* clusterAssignments, float* centroid
     // Update centroids
     if (tid < K)
     {
-        float sum1 = 0;
-        float sum2 = 0;
-        float sum3 = 0;
-        for (int i = 0; i < BLOCKSIZE; i++)
-        {
-            if (s_clusterAssignments[i] == tid)
-            {
-                sum1 += s_songs[i*FEATURES];
-                sum2 += s_songs[i*FEATURES+1];
-                sum3 += s_songs[i*FEATURES+2];
-            }
-        }
-
+        float* centroid = &s_centroids[tid*FEATURES];
         int count = s_clusterCounts[tid];
         if (count > 0)
         {
-            s_centroids[tid*FEATURES] = sum1 / count;
-            s_centroids[tid*FEATURES+1] = sum2 / count;
-            s_centroids[tid*FEATURES+2] = sum3 / count;
+            // reset centroid
+            centroid[0] = 0;
+            centroid[1] = 0;
+            centroid[2] = 0;
+            for (int i = 0; i < BLOCKSIZE; ++i)
+            {
+                if (s_clusterAssignments[i] == tid)
+                {
+                    centroid[0] += s_songs[i*FEATURES];
+                    centroid[1] += s_songs[i*FEATURES+1];
+                    centroid[2] += s_songs[i*FEATURES+2];
+                }
+            }
+            centroid[0] /= count;
+            centroid[1] /= count;
+            centroid[2] /= count;
         }
+
+        // Update global centroids
+        centroids[tid*FEATURES] = centroid[0];
+        centroids[tid*FEATURES+1] = centroid[1];
+        centroids[tid*FEATURES+2] = centroid[2];
+        clusterCounts[tid] = count;
     }
+
+    // Update global cluster assignments
+    clusterAssignments[gid] = s_clusterAssignments[tid];
 }
 
 void kMeansCUDA(float* songs_h, int n)
