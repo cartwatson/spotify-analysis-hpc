@@ -155,7 +155,6 @@ void kMeansCUDA(Song* songs, int n)
 int main(int argc, char* argv[])
 {
     int maxLines = 250000;
-    int blockSize = 256;
 
     // Parse command-line arguments for maxLines and blockSize
     if (argc > 1)
@@ -166,10 +165,10 @@ int main(int argc, char* argv[])
     }
     if (argc > 2)
     {
-        blockSize = std::stoi(argv[2]);
+        BLOCKSIZE = std::stoi(argv[2]);
     }
 
-    std::cout << "maxLines = " << maxLines << ", blockSize = " << blockSize << std::endl;
+    std::cout << "maxLines = " << maxLines << ", blockSize = " << BLOCKSIZE << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
     
