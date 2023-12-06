@@ -120,6 +120,7 @@ void kMeansCUDA(float* songs_h, int n)
             centroids[i*(FEATURES+1)+1] /= centroids[i*(FEATURES+1)+3];
             centroids[i*(FEATURES+1)+2] /= centroids[i*(FEATURES+1)+3];
         }
+        checkCuda(cudaMemcpy(centroids_d, centroids, allCentroidsSize, cudaMemcpyHostToDevice));
     }
     checkCuda(cudaMemcpy(songs_h, songs_d, allSongsSize, cudaMemcpyDeviceToHost));
 }
