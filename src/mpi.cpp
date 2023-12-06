@@ -205,7 +205,7 @@ int main(int argc, char** argv)
 
     
     std::chrono::duration<double> duration = endParse - start;
-    std::cout << "Process " << world_rank << ": Parsed and distributed data in " << duration.count() << " seconds, received " << localSongs.size() << " songs.\n";
+    std::cout << "Process " << world_rank << ": Parsed data in " << duration.count() << " seconds, received " << localSongs.size() << " songs.\n";
 
     kMeansDistributed(localSongs, 100, 4, world_size, world_rank);
 
