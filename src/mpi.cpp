@@ -183,11 +183,7 @@ int main(int argc, char** argv)
             displacements[i] = (i == 0 ? 0 : displacements[i - 1] + sendCounts[i - 1]);
         }
     }
-    auto endParse = std::chrono::high_resolution_clock::now();
 
-    std::vector<std::string> featureNames = {"danceability", "acousticness", "liveness"};
-
-    // Broadcast totalSongs, sendCounts, and displacements to all processes
     MPI_Bcast(&totalSongs, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(sendCounts.data(), world_size, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(displacements.data(), world_size, MPI_INT, 0, MPI_COMM_WORLD);
@@ -204,10 +200,14 @@ int main(int argc, char** argv)
              localSongs.data(), sendCounts[world_rank], MPI_Song, 0, MPI_COMM_WORLD);
 
     
+    std::cout << "Process " << world_rank << ": Received " << localSongs.size() << " songs." << std::endl;
+    auto endParse = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = endParse - start;
-    std::cout << "Process " << world_rank << ": Parsed data in " << duration.count() << " seconds, received " << localSongs.size() << " songs.\n";
 
-    kMeansDistributed(localSongs, 100, 4, world_size, world_rank);
+    if (world_rank == 0)
+        std::cout << "Parsed and distributed data in " << duration.count() << " seconds." << std::endl;
+
+    kMeansDistributed(localSongs, 100, 5, world_size, world_rank);
 
     // Prepare for gathering
     std::vector<int> recvCounts(world_size), displs(world_size);
@@ -232,6 +232,11 @@ int main(int argc, char** argv)
         duration = endkMeans - endParse;
         std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
         std::cout << "Writing output to file..." << std::endl;
+        std::vector<std::string> featureNames = {
+            "danceability",
+            "acousticness",
+            "liveness"
+        };
         std::string header = featureNames[0] + "," + featureNames[1] + "," + featureNames[2] + ",cluster";
         std::vector<double*> data;
         for (Song& song : allSongs)

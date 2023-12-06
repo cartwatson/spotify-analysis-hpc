@@ -1,9 +1,10 @@
-#include <chrono>
-#include <fstream>
+#include <cuda_runtime.h>
 #include <iostream>
-#include <sstream>
 #include <vector>
+#include <chrono>
 #include <random>
+#include <sstream>
+#include <fstream>
 #include <assert.h>
 
 #include "util.cpp"
@@ -40,6 +41,15 @@ struct Centroid {
         cluster_size(0)
     {}
 };
+
+inline cudaError_t checkCuda(cudaError_t result)
+{
+    if (result != cudaSuccess) {
+        std::cerr << "CUDA Runtime Error: " << cudaGetErrorString(result) << std::endl;
+        assert(result == cudaSuccess);
+    }
+    return result;
+}
 
 /**
  * Calculates the distance between two points in 3D space (no need to get the square root, it's all relative)
@@ -92,14 +102,6 @@ __global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n)
     }
 }
 
-inline cudaError_t checkCuda(cudaError_t result)
-{
-    if (result != cudaSuccess) {
-        std::cerr << "CUDA Runtime Error: " << cudaGetErrorString(result) << std::endl;
-        assert(result == cudaSuccess);
-    }
-    return result;
-}
 
 void kMeansCUDA(Song* songs, int n)
 {
