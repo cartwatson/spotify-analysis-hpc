@@ -124,7 +124,7 @@ cuda_mpi_implementation() {
     echo "Running cuda/mpi program..."
     read -p "Enter command line arguments (enter for none): " -a args
     echo "Program Output:"
-    mpirun -n 4 mpi_cuda ${args[@]} 
+    mpirun -n 4 --oversubscribe mpi_cuda ${args[@]} 
 
     echo "Program executed successfully"
     echo "Cleaning up..."
