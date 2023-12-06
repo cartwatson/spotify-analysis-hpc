@@ -35,19 +35,19 @@ void kMeansSerial(std::vector<Song>& songs, int epochs, int k) {
     {
         // For each centroid, compute distance from centroid to each point
         // and update point's cluster if necessary
-        for (Song& c : centroids)
+        for (Song& s : songs)
         {
             double minDist = __DBL_MAX__;
             int closestCluster = -1;
-            for (Song& song : songs)
+            for (Song& c : centroids)
             {
-                double dist = c.distance(song);
+                double dist = s.distance(c);
                 if (dist < minDist)
                 {
                     minDist = dist;
                     closestCluster = c.cluster;
                 }
-                song.cluster = closestCluster;
+                s.cluster = closestCluster;
             }
         }
 

@@ -37,17 +37,22 @@ void kMeansParallel(std::vector<Song>& songs, int epochs, int k) {
     {
         // For each centroid, compute distance from centroid to each point
         // and update point's cluster if necessary
-        for (Song& c : centroids)
-            # pragma omp parallel for
-            for (Song& song : songs)
+        # pragma omp parallel for
+        for (Song& s : songs)
+        {
+            double minDist = __DBL_MAX__;
+            int closestCluster = -1;
+            for (Song& c : centroids)
             {
-                double dist = c.distance(song);
-                if (dist < song.minDist)
+                double dist = c.distance(s);
+                if (dist < minDist)
                 {
-                    song.minDist = dist;
-                    song.cluster = c.cluster;
+                    minDist = dist;
+                    closestCluster = c.cluster;
                 }
             }
+            s.cluster = closestCluster;
+        }
 
 
         // Create vectors to keep track of data needed to compute means
@@ -70,8 +75,6 @@ void kMeansParallel(std::vector<Song>& songs, int epochs, int k) {
             sumDance[song.cluster] += song.feature1;
             sumAcoustic[song.cluster] += song.feature2;
             sumLive[song.cluster] += song.feature3;
-
-            song.minDist = __DBL_MAX__;  // reset distance
         }
 
         // Compute the new centroids
