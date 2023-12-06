@@ -56,7 +56,7 @@ echo "GPU scaling study completed. Results saved in $LOG_DIR"
 
 # Creating and activating a Python virtual environment
 echo "Setting up Python virtual environment..."
-python3 -m venv venv
+python3.9 -m venv venv
 source venv/bin/activate
 
 # Installing Matplotlib
