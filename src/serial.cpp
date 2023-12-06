@@ -17,9 +17,7 @@
 void kMeansSerial(std::vector<Song>& songs, int epochs, int k) {
     int n = songs.size();
 
-    // Randomly initialise centroids
-    // The index of the centroid within the centroids vector
-    // represents the cluster label.
+    // Randomly initialise centroids based on testing flag
     #ifdef TESTING
     std::mt19937 rng(123);
     #else
@@ -37,16 +35,21 @@ void kMeansSerial(std::vector<Song>& songs, int epochs, int k) {
     {
         // For each centroid, compute distance from centroid to each point
         // and update point's cluster if necessary
-        for (Song& c : centroids)
-            for (Song& song : songs)
+        for (Song& s : songs)
+        {
+            double minDist = __DBL_MAX__;
+            int closestCluster = -1;
+            for (Song& c : centroids)
             {
-                double dist = c.distance(song);
-                if (dist < song.minDist)
+                double dist = s.distance(c);
+                if (dist < minDist)
                 {
-                    song.minDist = dist;
-                    song.cluster = c.cluster;
+                    minDist = dist;
+                    closestCluster = c.cluster;
                 }
+                s.cluster = closestCluster;
             }
+        }
 
         // Create vectors to keep track of data needed to compute means
         std::vector<int> nSongs;
@@ -66,8 +69,6 @@ void kMeansSerial(std::vector<Song>& songs, int epochs, int k) {
             sumDance[song.cluster] += song.feature1;
             sumAcoustic[song.cluster] += song.feature2;
             sumLive[song.cluster] += song.feature3;
-
-            song.minDist = __DBL_MAX__;  // reset distance
         }
 
         // Compute the new centroids

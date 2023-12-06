@@ -36,18 +36,22 @@ void kMeansParallel(std::vector<Song>& songs, int epochs, int k) {
     for (int i = 0; i < epochs; ++i)
     {
         // For each centroid, compute distance from centroid to each point
-        // and update point's cluster if necessary
-        for (Song& c : centroids)
-            # pragma omp parallel for
-            for (Song& song : songs)
+        # pragma omp parallel for
+        for (Song& s : songs)
+        {
+            double minDist = __DBL_MAX__;
+            int closestCluster = -1;
+            for (Song& c : centroids)
             {
-                double dist = c.distance(song);
-                if (dist < song.minDist)
+                double dist = c.distance(s);
+                if (dist < minDist)
                 {
-                    song.minDist = dist;
-                    song.cluster = c.cluster;
+                    minDist = dist;
+                    closestCluster = c.cluster;
                 }
             }
+            s.cluster = closestCluster;
+        }
 
 
         // Create vectors to keep track of data needed to compute means
@@ -70,8 +74,6 @@ void kMeansParallel(std::vector<Song>& songs, int epochs, int k) {
             sumDance[song.cluster] += song.feature1;
             sumAcoustic[song.cluster] += song.feature2;
             sumLive[song.cluster] += song.feature3;
-
-            song.minDist = __DBL_MAX__;  // reset distance
         }
 
         // Compute the new centroids
@@ -97,6 +99,7 @@ int main(int argc, char** argv)
 
     auto start = std::chrono::high_resolution_clock::now();
     
+    // Get data from CSV
     std::vector<double*> data = parseCSV(maxLines);
     std::vector<Song> songs;
     std::vector<std::string> featureNames = {"danceability", "acousticness", "liveness"};
@@ -115,6 +118,7 @@ int main(int argc, char** argv)
     duration = endkMeans - endParse;
     std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
 
+    // Send data to CSV
     std::cout << "Writing output to file..." << std::endl;
     std::string header = featureNames[0] + "," + featureNames[1] + "," + featureNames[2] + ",cluster";
     data.clear();

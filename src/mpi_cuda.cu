@@ -1,4 +1,3 @@
-// Include Directives
 #include <cuda_runtime.h>
 #include <iostream>
 #include <vector>
@@ -8,14 +7,13 @@
 #include <fstream>
 #include <assert.h>
 
-// CUDA-specific code
 struct Song {
     float feature1, feature2, feature3;
     int cluster;
 
-    Song() : feature1(0.0), feature2(0.0), feature3(0.0), cluster(-1) {}
+    Song(): feature1(0.0), feature2(0.0), feature3(0.0), cluster(-1) {}
 
-    Song(float f1, float f2, float f3) :
+    Song(float f1, float f2, float f3):
         feature1(f1),
         feature2(f2),
         feature3(f3),
@@ -27,9 +25,9 @@ struct Centroid {
     float feature1, feature2, feature3;
     int cluster_size;
 
-    Centroid() : feature1(0.0), feature2(0.0), feature3(0.0), cluster_size(0) {}
+    Centroid(): feature1(0.0), feature2(0.0), feature3(0.0), cluster_size(0) {}
 
-    Centroid(float f1, float f2, float f3) :
+    Centroid(float f1, float f2, float f3):
         feature1(f1),
         feature2(f2),
         feature3(f3),
@@ -83,8 +81,8 @@ __global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n)
 }
 
 // Wrapper function for assignSongToCluster kernel
-extern "C" void callAssignSongToCluster(Song * songs, Centroid * centroids, int n, int k) {
-    int threadsPerBlock = 256;
+extern "C" void callAssignSongToCluster(Song * songs, Centroid * centroids, int n, int k, int threads) {
+    int threadsPerBlock = (threads > 0) ? threads : 256;
     int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock; 
 
     dim3 grid(blocksPerGrid);
@@ -102,8 +100,8 @@ extern "C" void callAssignSongToCluster(Song * songs, Centroid * centroids, int 
 }
 
 // Wrapper function for calculateNewCentroids kernel
-extern "C" void callCalculateNewCentroids(Song * songs, Centroid * centroids, int n) {
-    int threadsPerBlock = 256;
+extern "C" void callCalculateNewCentroids(Song * songs, Centroid * centroids, int n, int threads) {
+    int threadsPerBlock = (threads > 0) ? threads : 256;
     int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
 
     dim3 grid(blocksPerGrid);
@@ -129,19 +127,11 @@ extern "C" void allocateMemoryAndCopyToGPU(Song** deviceSongs, Centroid** device
     // Allocate memory for centroids on the device
     checkCuda(cudaMalloc(deviceCentroids, numCentroids * sizeof(Centroid)));
     checkCuda(cudaMemcpy(*deviceCentroids, hostCentroids, numCentroids * sizeof(Centroid), cudaMemcpyHostToDevice));
-    // The code replaced in mainProgram:
-    // checkCuda(cudaMalloc(&localSongs_d, localN * sizeof(Song)));
-    // checkCuda(cudaMemcpy(localSongs_d, localSongs, localN * sizeof(Song), cudaMemcpyHostToDevice));
-    // checkCuda(cudaMalloc(&centroids_d, k * sizeof(Centroid)));
-    // checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
 }
 
 extern "C" void freeGPUMemory(Song* deviceSongs, Centroid* deviceCentroids) {
     checkCuda(cudaFree(deviceSongs));
     checkCuda(cudaFree(deviceCentroids));
-    // Replaced code
-    // checkCuda(cudaFree(localSongs_d));
-    // checkCuda(cudaFree(centroids_d));
 }
 
 extern "C" void gpuErrorCheck() {
@@ -151,31 +141,20 @@ extern "C" void gpuErrorCheck() {
         assert(error == cudaSuccess);
     }
     checkCuda(cudaDeviceSynchronize());
-    // // Replaced
-    // checkCuda(cudaGetLastError());
-    // checkCuda(cudaDeviceSynchronize());
-
 }
 
 extern "C" void resetCentroids(Centroid* centroids_d, int k) {
     checkCuda(cudaMemset(centroids_d, 0, k * sizeof(Centroid)));
-    // Replaced
-    // checkCuda(cudaMemset(centroids_d, 0, k * sizeof(Centroid)));
 }
 
 extern "C" void copyCentroidsToHost(Centroid* centroids, Centroid* centroids_d, int k) {
     checkCuda(cudaMemcpy(centroids, centroids_d, k * sizeof(Centroid), cudaMemcpyDeviceToHost));
-    // replaced
-     //   checkCuda(cudaMemcpy(centroids, centroids_d, k * sizeof(Centroid), cudaMemcpyDeviceToHost));
-
 }
 
 extern "C" void copyCentroidsToDevice(Centroid* deviceCentroids, Centroid* hostCentroids, int k) {
     checkCuda(cudaMemcpy(deviceCentroids, hostCentroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
-// checkCuda(cudaMemcpy(centroids_d, centroids, k * sizeof(Centroid), cudaMemcpyHostToDevice));
 }
 
 extern "C" void copySongsToHost(Song* hostSongs, Song* deviceSongs, int localN) {
     checkCuda(cudaMemcpy(hostSongs, deviceSongs, localN * sizeof(Song), cudaMemcpyDeviceToHost));
-// checkCuda(cudaMemcpy(localSongs, localSongs_d, localN * sizeof(Song), cudaMemcpyDeviceToHost));
 }
