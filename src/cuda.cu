@@ -32,7 +32,7 @@ __device__ double sq_distance(float f1, float f2, float f3, float c1, float c2, 
            (f3 - c3) * (f3 - c3);
 }
 
-__global__ void songAssign(float* songs, int* clusterAssignments, float* centroids, int n)
+__global__ void epochIter(float* songs, int* clusterAssignments, float* centroids, int n)
 {
     __shared__ float s_centroids[K*FEATURES];
     __shared__ int s_clusterCounts[K];
@@ -78,9 +78,34 @@ __global__ void songAssign(float* songs, int* clusterAssignments, float* centroi
 
     // Assign song to closest centroid
     s_clusterAssignments[tid] = closestCentroid;
+    atomicAdd(&s_clusterCounts[closestCentroid], 1);
 
-    // Put cluster assignments back into global memory
-    clusterAssignments[gid] = s_clusterAssignments[tid];
+    __syncthreads();
+
+    // Update centroids
+    if (tid < K)
+    {
+        float sum1 = 0;
+        float sum2 = 0;
+        float sum3 = 0;
+        for (int i = 0; i < BLOCKSIZE; i++)
+        {
+            if (s_clusterAssignments[i] == tid)
+            {
+                sum1 += s_songs[i*FEATURES];
+                sum2 += s_songs[i*FEATURES+1];
+                sum3 += s_songs[i*FEATURES+2];
+            }
+        }
+
+        int count = s_clusterCounts[tid];
+        if (count > 0)
+        {
+            atomicAdd(&centroids[tid*FEATURES], sum1 / count);
+            atomicAdd(&centroids[tid*FEATURES+1], sum2 / count);
+            atomicAdd(&centroids[tid*FEATURES+2], sum3 / count);
+        }
+    }
 }
 
 void kMeansCUDA(float* songs_h, int n)
@@ -115,22 +140,11 @@ void kMeansCUDA(float* songs_h, int n)
     for (int i = 0; i < n; ++i)
         clusterAssignments[i] = -1;
 
-    int* clusterAssignments_d;
-    checkCuda(cudaMalloc(&clusterAssignments_d, n*sizeof(int)));
-    checkCuda(cudaMemcpy(clusterAssignments_d, clusterAssignments, n*sizeof(int), cudaMemcpyHostToDevice));
-
     for (int epoch = 0; epoch < EPOCHS; ++epoch)
     {
-        songAssign<<<gridDim, blockDim>>>(songs_d, clusterAssignments, centroids_d, n);
+        epochIter<<<gridDim, blockDim>>>(songs_d, clusterAssignments, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
-
-        // Copy cluster assignments back to host
-        checkCuda(cudaMemcpy(clusterAssignments, clusterAssignments_d, n*sizeof(int), cudaMemcpyDeviceToHost));
-
-        // Update centroids
-
-
     }
     checkCuda(cudaMemcpy(songs_h, songs_d, allSongsSize, cudaMemcpyDeviceToHost));
 }
