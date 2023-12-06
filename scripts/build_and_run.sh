@@ -112,20 +112,20 @@ mpi_implementation() {
 
 cuda_mpi_implementation() {
     echo "Compiling cuda/mpi program..."
-    mpic++ -std=c++11 -c mainProgram.cpp -o src/mainProgram.o
-    nvcc -c src/cudaCode.cu -o cudaCode.o
-    mpic++ -std=c++11 -o mainProg mainProgram.o cudaCode.o -lcudart -lmpi
+    mpic++ -std=c++11 -c src/mpi_cuda_main.cpp -o mpi_cuda_main.o
+    nvcc -c src/mpi_cuda.cu -o mpi_cuda.o
+    mpic++ -std=c++11 -o mpi_cuda mpi_cuda_main.o mpi_cuda.o -lmpi -L/usr/local/cuda-12.2/lib64 -lcudart
 
     echo "Running cuda/mpi program..."
     read -p "Enter command line arguments (enter for none): " -a args
     echo "Program Output:"
-    ./mainProg ${args[@]}
+    mpirun -n 4 mpi_cuda ${args[@]} 
 
     echo "Program executed successfully"
     echo "Cleaning up..."
-    rm mainProg
-    rm cudaCode.o
-    rm mainProgram.0
+    rm mpi_cuda
+    rm mpi_cuda.o
+    rm mpi_cuda_main.o
 }
 
 # MAIN

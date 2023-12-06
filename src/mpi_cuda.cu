@@ -8,8 +8,6 @@
 #include <fstream>
 #include <assert.h>
 
-#include "util.cpp"
-
 // CUDA-specific code
 struct Song {
     float feature1, feature2, feature3;

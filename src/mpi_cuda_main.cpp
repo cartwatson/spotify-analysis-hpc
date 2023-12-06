@@ -73,9 +73,7 @@ void distributeData(MPI_Datatype MPI_Song, std::vector<Song>& allSongs, std::vec
         int localSongCount = totalSongs / world_size + (world_rank < totalSongs % world_size ? 1 : 0);
         localSongs.resize(localSongCount);
     }
-    else {
-        localSongs = allSongs;  // The root process already has all the songs
-    }
+    else localSongs = allSongs;  // The root process already has all the songs
 
     // Scatter the songs from the root process to all other processes
     MPI_Scatterv(allSongs.data(), sendCounts.data(), displacements.data(), MPI_Song,
@@ -119,28 +117,20 @@ void kMeansCUDAMPI(Song* localSongs, int localN, int epochs, int k, int world_si
         allCentroids.resize(k * world_size);
     }
 
-    // Broadcast centroids from the root process to all other processes
     MPI_Bcast(centroids, k * sizeof(Centroid), MPI_BYTE, 0, MPI_COMM_WORLD);
-
-    // Call the wrapper function to allocate memory on the GPU and copy data
     allocateMemoryAndCopyToGPU(&localSongs_d, &centroids_d, localSongs, centroids, localN, k * sizeof(Centroid));
 
     for (int epoch = 0; epoch < epochs; ++epoch) {
-        // Assign each song to the nearest centroid using GPU
         callAssignSongToCluster(localSongs_d, centroids_d, localN, k);
         gpuErrorCheck();
         
-        // Reset centroids for next calculation
         resetCentroids(centroids_d, k);
 
-        // Update centroids based on current assignment
         callCalculateNewCentroids(localSongs_d, centroids_d, localN);
         gpuErrorCheck();
 
-        // Copy updated centroids back to host
         copyCentroidsToHost(centroids, centroids_d, k);
         
-        // Root process aggregates centroids from all processes
         MPI_Gather(centroids, k * sizeof(Centroid), MPI_BYTE,
             allCentroids.data(), k * sizeof(Centroid), MPI_BYTE, 0, MPI_COMM_WORLD);
 
@@ -202,35 +192,45 @@ int main(int argc, char** argv) {
     std::vector<Song> allSongs;
     std::vector<Song> localSongs;
     std::vector<double*> rawData;
-    int maxLines = 250000;
 
-    if (world_rank == 0) {
+    auto start = std::chrono::high_resolution_clock::now();
+    if (world_rank == 0)
+    {
+
+        int maxLines = 250000;
+        if (argc > 1)
+        {
+            maxLines = std::stoi(argv[1]);
+            if (maxLines < 0 || maxLines > MAX_LINES)
+                maxLines = MAX_LINES;
+            std::cout << "maxLines = " << maxLines << std::endl;
+        }
         rawData = parseCSV(maxLines);  // This will hold raw feature data from the CSV
 
         // Transform rawData into a vector of Song structures
-        allSongs.reserve(rawData.size());
         for (double* features : rawData) {
-            allSongs.emplace_back(features[0], features[1], features[2]);
+            allSongs.push_back(features[0], features[6], features[8]);
             delete[] features;
         }
     }
+
     // Distribute data among MPI processes
     distributeData(MPI_Song, allSongs, localSongs, world_size, world_rank);
+    auto endParse = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = endParse - start;
+    std::cout << "Process " << world_rank << ": Parsed and distributed data in " << duration.count() << " seconds, received " << localSongs.size() << " songs.\n";
 
-    // Perform the k-means clustering
-    int epochs = 100;  // Number of epochs
-    int k = 5;  // Number of clusters
-    kMeansCUDAMPI(localSongs.data(), localSongs.size(), epochs, k, world_size, world_rank);
+    kMeansCUDAMPI(localSongs.data(), localSongs.size(), 100, 5, world_size, world_rank);
 
-    // Gather results back to the root process
     gatherResults(MPI_Song, allSongs, localSongs, world_size, world_rank);
 
-    // Write output to file if root process
     if (world_rank == 0) {
-        // Construct the header for the CSV
-        std::string header = "Feature1,Feature2,Feature3,Cluster\n";
+        auto endkMeans = std::chrono::high_resolution_clock::now();
+        duration = endkMeans - endParse;
+        std::cout << "Finished k-means in " << duration.count() << " seconds" << std::endl;
+        std::vector<std::string> featureNames = {"danceability", "acousticness", "liveness"};
+        std::string header = featureNames[0] + "," + featureNames[1] + "," + featureNames[2] + ",cluster";
 
-        // Prepare the data in the format expected by writeCSV
         std::vector<double*> csvData;
         for (const Song& song : allSongs) {
             double* row = new double[4];
@@ -241,8 +241,7 @@ int main(int argc, char** argv) {
             csvData.push_back(row);
         }
 
-        // Write the CSV file
-        writeCSV(csvData, "output.csv", header);
+        writeCSV(csvData, "src/data/output.csv", header);
 
         // Clean up the allocated arrays for CSV data
         for (double* row : csvData) {
