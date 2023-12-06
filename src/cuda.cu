@@ -31,7 +31,7 @@ struct Centroid {
     float feature1, feature2, feature3;
     int cluster_size;
 
-    __host__ __device__ Centroid(): feature1(0.0), feature2(0.0), feature3(0.0), cluster_size(0) {}
+    Centroid(): feature1(0.0), feature2(0.0), feature3(0.0), cluster_size(0) {}
 
     Centroid(float f1, float f2, float f3):
         feature1(f1),
@@ -79,7 +79,12 @@ __global__ void epochIter(Song* songs, Centroid* centroids, int n)
 
     // Update the centroids
     if (threadIdx.x < K)
-        shared_centroids[threadIdx.x] = Centroid();
+    {
+        shared_centroids[threadIdx.x].feature1 = 0.0;
+        shared_centroids[threadIdx.x].feature2 = 0.0;
+        shared_centroids[threadIdx.x].feature3 = 0.0;
+        shared_centroids[threadIdx.x].cluster_size = 0;
+    }
     __syncthreads();
 
     // Calculate the new centroids by averaging the songs in each cluster
