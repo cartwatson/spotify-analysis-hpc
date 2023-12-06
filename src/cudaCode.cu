@@ -85,11 +85,9 @@ __global__ void calculateNewCentroids(Song* songs, Centroid* centroids, int n)
 }
 
 // Wrapper function for assignSongToCluster kernel
-
 extern "C" void callAssignSongToCluster(Song * songs, Centroid * centroids, int n, int k) {
-    // Example: Assuming you want to use 256 threads per block
     int threadsPerBlock = 256;
-    int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock; // Ensure there are enough blocks
+    int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock; 
 
     dim3 grid(blocksPerGrid);
     dim3 block(threadsPerBlock);
@@ -102,15 +100,13 @@ extern "C" void callAssignSongToCluster(Song * songs, Centroid * centroids, int 
     cudaError_t error = cudaGetLastError();
     if (error != cudaSuccess) {
         fprintf(stderr, "CUDA error: %s\n", cudaGetErrorString(error));
-        // Optionally, throw an exception or perform other error handling
     }
 }
 
 // Wrapper function for calculateNewCentroids kernel
 extern "C" void callCalculateNewCentroids(Song * songs, Centroid * centroids, int n) {
-    // Example: Assuming you want to use 256 threads per block
     int threadsPerBlock = 256;
-    int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock; // Ensure there are enough blocks
+    int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
 
     dim3 grid(blocksPerGrid);
     dim3 block(threadsPerBlock);
@@ -123,7 +119,6 @@ extern "C" void callCalculateNewCentroids(Song * songs, Centroid * centroids, in
     cudaError_t error = cudaGetLastError();
     if (error != cudaSuccess) {
         fprintf(stderr, "CUDA error: %s\n", cudaGetErrorString(error));
-        // Optionally, throw an exception or perform other error handling
     }
 }
 
