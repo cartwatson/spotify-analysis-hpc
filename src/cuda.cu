@@ -10,7 +10,7 @@
 
 #define FEATURES 3
 #define BLOCKSIZE 256
-#define EPOCHS 1
+#define EPOCHS 2
 #define K 5
 
 
@@ -37,16 +37,16 @@ __global__ void epochIter(float* songs, float* centroids, int n)
     float* song = &songs[gid*(FEATURES+1)]; // Get pointer to this thread's song
     float minDist = sq_distance(song[0], song[1], song[2], s_centroids[0], s_centroids[1], s_centroids[2]); // Initialize to the distance to first centroid
     int closestCluster = 0; // centroid 0 is closest by default at this point
-    for (int i = 1; i < K; ++i)
+    for (int c = 1; c < K; ++c)
     {
         float dist = sq_distance(
             song[0], song[1], song[2],
-            s_centroids[i*(FEATURES+1)], s_centroids[i*(FEATURES+1)+1], s_centroids[i*(FEATURES+1)+2]
+            s_centroids[c*(FEATURES+1)], s_centroids[c*(FEATURES+1)+1], s_centroids[c*(FEATURES+1)+2]
         );
         if (dist < minDist)
         {
             minDist = dist;
-            closestCluster = i;
+            closestCluster = c;
         }
     }
     song[3] = closestCluster;
@@ -67,8 +67,14 @@ __global__ void epochIter(float* songs, float* centroids, int n)
 
     __syncthreads();
 
-    if (threadIdx.x < K*(FEATURES+1))
-        atomicAdd(&centroids[threadIdx.x], s_centroids[threadIdx.x]);
+    //update centroids
+    if (threadIdx.x < K)
+    {
+        centroids[threadIdx.x*(FEATURES+1)] = s_centroids[threadIdx.x*(FEATURES+1)] / s_centroids[threadIdx.x*(FEATURES+1)+3];
+        centroids[threadIdx.x*(FEATURES+1)+1] = s_centroids[threadIdx.x*(FEATURES+1)+1] / s_centroids[threadIdx.x*(FEATURES+1)+3];
+        centroids[threadIdx.x*(FEATURES+1)+2] = s_centroids[threadIdx.x*(FEATURES+1)+2] / s_centroids[threadIdx.x*(FEATURES+1)+3];
+        centroids[threadIdx.x*(FEATURES+1)+3] = 0;
+    }
 }
 
 inline cudaError_t checkCuda(cudaError_t result)
@@ -110,17 +116,6 @@ void kMeansCUDA(float* songs_h, int n)
         epochIter<<<gridDim, blockDim>>>(songs_d, centroids_d, n);
         checkCuda(cudaGetLastError());
         checkCuda(cudaDeviceSynchronize());
-
-        checkCuda(cudaMemcpy(centroids, centroids_d, allCentroidsSize, cudaMemcpyDeviceToHost));
-
-        // divide by cluster size to get average
-        for (int i = 0; i < K; i++)
-        {
-            centroids[i*(FEATURES+1)] /= centroids[i*(FEATURES+1)+3];
-            centroids[i*(FEATURES+1)+1] /= centroids[i*(FEATURES+1)+3];
-            centroids[i*(FEATURES+1)+2] /= centroids[i*(FEATURES+1)+3];
-        }
-        checkCuda(cudaMemcpy(centroids_d, centroids, allCentroidsSize, cudaMemcpyHostToDevice));
     }
     checkCuda(cudaMemcpy(songs_h, songs_d, allSongsSize, cudaMemcpyDeviceToHost));
 }
