@@ -20,14 +20,14 @@ compile_program "serial" "g++ -std=c++11 -g -Wall -DTESTING -o serial src/serial
 # Compile OpenMP
 OS=$(uname -s)
 if [ "$OS" = "Darwin" ]; then
-    compile_command="clang++ -std=c++11 -Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include -L/opt/homebrew/opt/libomp/lib -lomp src/omp.cpp -o omp"
+    compile_command="clang++ -std=c++11 -Xpreprocessor -fopenmp -DTESTING -I/opt/homebrew/opt/libomp/include -L/opt/homebrew/opt/libomp/lib -lomp src/omp.cpp -o omp"
 else
-    compile_command="g++ -g -Wall -fopenmp -o omp src/omp.cpp"
+    compile_command="g++ -g -Wall -fopenmp -DTESTING -o omp src/omp.cpp"
 fi
 compile_program "OpenMP" "$compile_command"
 
 # Compile MPI
-compile_program "MPI" "mpic++ -std=c++11 -o mpi src/mpi.cpp"
+compile_program "MPI" "mpic++ -std=c++11 -o mpi -DTESTING src/mpi.cpp"
 
 # Directory for logs
 LOG_DIR="logs"
