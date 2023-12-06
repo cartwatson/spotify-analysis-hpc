@@ -69,11 +69,8 @@ void distributeData(MPI_Datatype MPI_Song, std::vector<Song>& allSongs, std::vec
     MPI_Bcast(&totalSongs, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Each process prepares its localSongs vector
-    if (world_rank != 0) {
-        int localSongCount = totalSongs / world_size + (world_rank < totalSongs % world_size ? 1 : 0);
-        localSongs.resize(localSongCount);
-    }
-    else localSongs = allSongs;  // The root process already has all the songs
+    int localSongCount = totalSongs / world_size + (world_rank < totalSongs % world_size ? 1 : 0);
+    localSongs.resize(localSongCount);
 
     // Scatter the songs from the root process to all other processes
     MPI_Scatterv(allSongs.data(), sendCounts.data(), displacements.data(), MPI_Song,
